@@ -1,0 +1,383 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* House & Sky — logo palette (green / gold / cream) */
+  --color-bg-primary:    #FFFFFF;   /* White page ground so gray-100 bands read */
+  --color-bg-secondary:  #FFFFFF;
+  --color-bg-surface:    #FFFFFF;
+  --color-bg-elevated:   #F5F2E8;
+  --color-bg-overlay:    rgba(11, 79, 60, 0.60);
+
+  --color-brand-green:   #0B4F3C;   /* Deep emerald */
+  --color-brand-dark:    #063B2D;   /* Forest green */
+  --color-brand-soft:    #E8F0EC;
+  --color-brand-warm:    #FDFCF0;
+  --color-brand-gold:    #C9A96E;   /* Metallic gold */
+  --color-brand-gold-light: #F3E5AB;
+  --color-brand-gold-dark:  #A67C2D;
+  /* Legacy alias → gold */
+  --color-brand-sky:     #C9A96E;
+
+  --color-text-main:     #171A18;
+  --color-text-muted:    #6D746F;
+  --color-white-100:     #FFFFFF;
+  --color-white-200:     #FDFCF0;
+}
+
+/* Global Reset & Base Styling */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-main);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-size: 16px;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* next/font variables live on <html>; alias legacy Inter token used by form CSS */
+html {
+  --font-inter: var(--font-dm-sans);
+}
+
+/* Beat Tailwind's default font-sans / font-serif utilities (theme extend is not winning). */
+.font-sans,
+.font-inter {
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+}
+
+.font-serif,
+.font-playfair,
+.font-cormorant {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FDFCF0;
+}
+::-webkit-scrollbar-thumb {
+  background: #C2CAC5;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0B4F3C;
+}
+
+/* =====================================================================
+   HOUSE & SKY — GLOBAL FORM DESIGN SYSTEM
+   All inputs, selects, textareas, labels, buttons, and form cards
+   share a single design language defined here.
+   ===================================================================== */
+
+/* ── Input / Select / Textarea Base ──────────────────────────────────── */
+.input-base {
+  background: #FFFFFF;
+  border: 1px solid #D5DDD8;
+  color: #171A18;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5;
+  min-height: 48px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+  outline: none;
+  border-radius: 12px;
+  width: 100%;
+}
+
+/* ── Padding Overrides for Left & Right Icons to Prevent Overlap ──────── */
+.input-base.pl-8, select.input-base.pl-8, input.input-base.pl-8 { padding-left: 2rem !important; }
+.input-base.pl-9, select.input-base.pl-9, input.input-base.pl-9 { padding-left: 2.25rem !important; }
+.input-base.pl-10, select.input-base.pl-10, input.input-base.pl-10 { padding-left: 2.625rem !important; }
+.input-base.pl-11, select.input-base.pl-11, input.input-base.pl-11 { padding-left: 2.875rem !important; }
+.input-base.pl-12, select.input-base.pl-12, input.input-base.pl-12 { padding-left: 3.125rem !important; }
+
+.input-base.pr-8, select.input-base.pr-8, input.input-base.pr-8 { padding-right: 2rem !important; }
+.input-base.pr-9, select.input-base.pr-9, input.input-base.pr-9 { padding-right: 2.25rem !important; }
+.input-base.pr-10, select.input-base.pr-10, input.input-base.pr-10 { padding-right: 2.625rem !important; }
+.input-base.pr-11, select.input-base.pr-11, input.input-base.pr-11 { padding-right: 2.875rem !important; }
+.input-base.pr-12, select.input-base.pr-12, input.input-base.pr-12 { padding-right: 3.125rem !important; }
+
+@media (min-width: 640px) {
+  .input-base {
+    min-height: 50px;
+    font-size: 0.875rem;
+  }
+}
+
+.input-base::placeholder {
+  color: #9CA3A0;
+  font-weight: 400;
+}
+
+/* ── Focus State ─────────────────────────────────────────────────────── */
+.input-base:focus {
+  border-color: #0B4F3C;
+  box-shadow: 0 0 0 3px rgba(11, 79, 60, 0.10);
+  background-color: #FFFFFF;
+}
+
+/* ── Dark surfaces (footer CTA, project heroes) — always green glass ─── */
+.input-base.input-on-dark {
+  background: rgba(11, 79, 60, 0.72);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #FFFFFF;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.input-base.input-on-dark::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+}
+
+.input-base.input-on-dark:hover,
+.input-base.input-on-dark:focus {
+  background: rgba(11, 79, 60, 0.72);
+  border-color: rgba(201, 169, 110, 0.65);
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.15);
+  color: #FFFFFF;
+}
+
+.input-base.input-on-dark:-webkit-autofill,
+.input-base.input-on-dark:-webkit-autofill:hover,
+.input-base.input-on-dark:-webkit-autofill:focus,
+.input-base.input-on-dark:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(11, 79, 60, 0.72) inset !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* ── Error State ─────────────────────────────────────────────────────── */
+.input-base.hs-input-error,
+.input-base[aria-invalid="true"] {
+  border-color: #DC2626;
+  background-color: #FEF2F2;
+}
+
+.input-base.hs-input-error:focus,
+.input-base[aria-invalid="true"]:focus {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.10);
+}
+
+/* ── Disabled State ──────────────────────────────────────────────────── */
+.input-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #F4F3EE;
+}
+
+/* ── Autofill Normalization (Chrome / Safari) ────────────────────────── */
+.input-base:-webkit-autofill,
+.input-base:-webkit-autofill:hover,
+.input-base:-webkit-autofill:focus,
+.input-base:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+  -webkit-text-fill-color: #171A18 !important;
+  transition: background-color 5000s ease-in-out 0s;
+  font-family: var(--font-inter), sans-serif !important;
+}
+
+/* ── Label Base ──────────────────────────────────────────────────────── */
+.hs-label {
+  display: block;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #171A18;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.hs-label .hs-required {
+  color: #DC2626;
+  margin-left: 2px;
+  font-weight: 700;
+}
+
+/* ── Error Message ───────────────────────────────────────────────────── */
+.hs-field-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #DC2626;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ── Helper Text ─────────────────────────────────────────────────────── */
+.hs-helper-text {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: #6D746F;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ── Form Card Container ─────────────────────────────────────────────── */
+.hs-form-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(11, 79, 60, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+
+@media (min-width: 640px) {
+  .hs-form-card {
+    padding: 32px;
+    border-radius: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hs-form-card {
+    padding: 40px;
+  }
+}
+
+/* ── Primary CTA Button ──────────────────────────────────────────────── */
+.hs-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 28px;
+  background-color: #0B4F3C;
+  color: #FFFFFF;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 200ms ease;
+  box-shadow: 0 1px 3px rgba(11, 79, 60, 0.15);
+  white-space: nowrap;
+}
+
+.hs-btn-primary:hover {
+  background-color: #063B2D;
+  box-shadow: 0 2px 8px rgba(11, 79, 60, 0.25);
+}
+
+.hs-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.hs-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(11, 79, 60, 0.25);
+}
+
+.hs-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 639px) {
+  .hs-btn-primary {
+    width: 100%;
+    min-height: 52px;
+  }
+}
+
+/* ── Success Toast ───────────────────────────────────────────────────── */
+.hs-success-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  border-radius: 12px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #065F46;
+}
+
+/* ── Error Toast ─────────────────────────────────────────────────────── */
+.hs-error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 12px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #991B1B;
+}
+
+/* ── Select Arrow Fix ────────────────────────────────────────────────── */
+.input-base[data-hs-select],
+select.input-base {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236D746F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* ── Textarea Specifics ──────────────────────────────────────────────── */
+textarea.input-base {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Announcement Ticker Continuous Marquee */
+@keyframes marqueeContinuous {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-continuous {
+  display: flex;
+  width: max-content;
+  animation: marqueeContinuous 35s linear infinite;
+}
+
+.animate-marquee-continuous:hover {
+  animation-play-state: paused;
+}
+

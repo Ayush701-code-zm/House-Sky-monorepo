@@ -1,0 +1,9 @@
+{
+  "name": "autoroma-perume",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:admin": "npm --prefix admin-panel run dev",
+    "dev:landing": "npm --prefix landing-page run dev"
+  }
+}
