@@ -30,7 +30,7 @@ export default function SavedPropertiesPage() {
         const res = await fetch(`${getApiBaseUrl()}/public/properties`).catch(() => null)
         if (res && res.ok && isSubscribed) {
           const data = await res.json().catch(() => [])
-          if (Array.isArray(data)) setLiveProperties(data.map(mapBackendProperty))
+          if (Array.isArray(data)) setLiveProperties(data.map((item) => mapBackendProperty(item)))
         }
       } catch (e) {
         console.error('Failed to load saved properties:', e)

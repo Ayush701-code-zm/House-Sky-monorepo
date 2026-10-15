@@ -442,7 +442,7 @@ function PropertiesContent() {
           // Keep demo listings only when the unfiltered DB is empty; a filtered empty result must clear stale cards
           const hasActiveFilters = Array.from(queryParams.keys()).some((k) => k !== 'sort')
           if (Array.isArray(data) && (data.length > 0 || hasActiveFilters)) {
-            const mapped = data.map(mapBackendProperty)
+            const mapped = data.map((item) => mapBackendProperty(item))
             setAllProperties(mapped)
           } else if (Array.isArray(data)) {
             setAllProperties(PROPERTIES)
