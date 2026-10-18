@@ -5,7 +5,9 @@ export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.replace(/^www\./, '');
     if (host !== 'localhost' && host !== '127.0.0.1') {
-      return `https://${host.startsWith('admin.') ? host : 'admin.' + host}/api/v1`;
+      // Production API lives on api.<domain>, never admin.<domain>
+      const root = host.startsWith('admin.') ? host.slice('admin.'.length) : host;
+      return `https://api.${root}/api/v1`;
     }
   }
   return 'http://localhost:5001/api/v1';

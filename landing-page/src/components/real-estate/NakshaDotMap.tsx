@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import Image from 'next/image'
 
 export const DOT_GREEN = '#22C55E'
 export const DOT_YELLOW = '#EAB308'
@@ -211,13 +210,13 @@ export function NakshaDotMap({
 
   return (
     <div className="relative w-full isolate">
-      <Image
+      {/* Native img: Next/Image breaks on long S3 presigned query strings */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={imageUrl}
         alt={imageAlt}
-        width={1400}
-        height={900}
         className="w-full h-auto block select-none"
-        unoptimized
+        draggable={false}
       />
 
       {/* SVG plot shapes (Hippo-style colored polygons / boxes) */}

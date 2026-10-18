@@ -197,12 +197,12 @@ export default function ProjectDetailsPage() {
       {/* ═══ HERO BANNER ═══ */}
       <div className="relative h-[50vh] min-h-[340px] max-h-[520px] overflow-hidden bg-brand-charcoal">
         {heroImage ? (
-          <Image
+          // Native img — Next/Image often fails on long S3 presigned URLs
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={heroImage}
             alt={project.name}
-            fill priority
-            className="object-cover"
-            unoptimized
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <div className="absolute inset-0 bg-brand-charcoal" />
