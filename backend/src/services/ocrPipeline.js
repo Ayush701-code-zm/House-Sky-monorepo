@@ -18,11 +18,12 @@ const {
 
 
 
-/** Dense overlapping grid so every plot is fully inside at least one tile. */
+/** Simplified grid for faster OCR - covers most standard layouts */
 function buildFullCoverageTiles() {
-  const steps = [0, 0.22, 0.44, 0.66];
-  const size = 0.36;
-  const labels = ['A', 'B', 'C', 'D'];
+  // Reduced from 4x4 to 3x3 grid (9 tiles instead of 16)
+  const steps = [0, 0.33, 0.66];
+  const size = 0.40; // Slightly larger tiles
+  const labels = ['A', 'B', 'C'];
   const tiles = [];
   for (let r = 0; r < steps.length; r += 1) {
     for (let c = 0; c < steps.length; c += 1) {
@@ -37,13 +38,11 @@ function buildFullCoverageTiles() {
       });
     }
   }
-  // Right / bottom edge strips so corner plots near ENTRY are not clipped.
-  tiles.push({ id: 'ER', x0: 0.68, x1: 1, y0: 0, y1: 0.55 });
-  tiles.push({ id: 'EB', x0: 0, x1: 0.55, y0: 0.68, y1: 1 });
-  tiles.push({ id: 'EBR', x0: 0.55, x1: 1, y0: 0.55, y1: 1 });
-  return tiles;
+  // Only bottom-right edge for plots near corners
+  tiles.push({ id: 'ER', x0: 0.65, x1: 1, y0: 0.65, y1: 1 });
+  return tiles; // 10 tiles total instead of 19
 }
-const TILE_ATTEMPTS = 3;
+const TILE_ATTEMPTS = 2; // Reduced from 3 to speed up OCR
 
 function mimeFromFileName(fileName, fallback = 'image/jpeg') {
   const ext = path.extname(fileName || '').toLowerCase();

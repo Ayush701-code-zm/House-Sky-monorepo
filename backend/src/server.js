@@ -60,9 +60,14 @@ app.get('/', (req, res) => {
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+// Increase timeout for long-running OCR operations (10 minutes)
+const server = app.listen(PORT, () => {
+  console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
 });
+server.timeout = 600000; // 10 minutes
+server.keepAliveTimeout = 610000;
+server.headersTimeout = 620000;
 
 module.exports = app;

@@ -6,6 +6,7 @@ const API_BASE_URL = envUrl || (window.location.hostname === 'localhost' ? 'http
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 600000, // 10 minutes for OCR operations
   headers: {
     'Content-Type': 'application/json'
   }
