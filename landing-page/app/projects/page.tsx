@@ -322,8 +322,6 @@ function ProjectCard({ proj }: { proj: any }) {
   return (
     <Link
       href={`/projects/${proj._id}`}
-      target="_blank"
-      rel="noopener noreferrer"
       className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-brand-green/10 hover:shadow-xl hover:border-brand-green/30 transition-all duration-300 flex flex-col"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-brand-charcoal">

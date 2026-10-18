@@ -112,6 +112,8 @@ export interface Project {
   gallery?: GalleryImage[];
   surveyNumber?: string;
   village?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   googleMapsUrl?: string;
   mapEmbedUrl?: string;
   brochureUrl?: string;
@@ -193,6 +195,8 @@ export interface ListingProperty {
   floorPlanUrl?: string;
   brochureUrl?: string;
   videoUrl?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   googleMapsUrl?: string;
   mapEmbedUrl?: string;
   contactPhone?: string;

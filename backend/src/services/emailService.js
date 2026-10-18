@@ -3,7 +3,8 @@ const nodemailer = require('nodemailer');
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.hostinger.com';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
 const SMTP_USER = process.env.SMTP_USER || 'info@houseandsky.com';
-const SMTP_PASS = process.env.SMTP_PASS || 'HRX6PVTAcq;9LsJ';
+// Password must come from env — never hardcode in source.
+const SMTP_PASS = process.env.SMTP_PASS || '';
 
 const DEFAULT_ADMIN_URL = process.env.ADMIN_URL || 'https://admin.houseandsky.com';
 const DEFAULT_LANDING_URL = process.env.LANDING_URL || 'https://www.houseandsky.com';

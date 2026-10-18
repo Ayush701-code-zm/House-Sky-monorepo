@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { GalleryImage, Project } from '../../types';
 import { useToast } from '../../context/ToastContext';
 import { GalleryUploader } from '../common/GalleryUploader';
+import LocationMapPicker from '../common/LocationMapPicker';
 
 interface EditProjectModalProps {
   project: Project;
@@ -47,6 +48,9 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onC
   const [surveyNumber, setSurveyNumber] = useState(project.surveyNumber || '');
   const [village, setVillage] = useState(project.village || '');
   const [googleMapsUrl, setGoogleMapsUrl] = useState(project.googleMapsUrl || '');
+  const [mapEmbedUrl, setMapEmbedUrl] = useState(project.mapEmbedUrl || '');
+  const [latitude, setLatitude] = useState<number | null>(project.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(project.longitude ?? null);
   const [fileName, setFileName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDholera, setIsDholera] = useState(project.isDholera || false);
@@ -137,7 +141,10 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onC
         gallery,
         surveyNumber,
         village,
+        latitude,
+        longitude,
         googleMapsUrl,
+        mapEmbedUrl,
         mapImageS3Key,
         isDholera
       });
@@ -324,8 +331,18 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onC
                 className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
             </div>
           </div>
+          <LocationMapPicker
+            latitude={latitude}
+            longitude={longitude}
+            onChange={({ latitude: lat, longitude: lng, googleMapsUrl: gUrl, mapEmbedUrl: eUrl }) => {
+              setLatitude(lat);
+              setLongitude(lng);
+              if (gUrl !== undefined) setGoogleMapsUrl(gUrl);
+              if (eUrl !== undefined) setMapEmbedUrl(eUrl);
+            }}
+          />
           <div>
-            <label className="text-[#171A18]/70 font-semibold">Google Maps URL</label>
+            <label className="text-[#171A18]/70 font-semibold">Google Maps URL (auto from pin)</label>
             <input type="url" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)}
               className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
           </div>

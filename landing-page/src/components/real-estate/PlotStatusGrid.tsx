@@ -35,7 +35,6 @@ export function PlotStatusGrid({ plots, onSelectPlot, onInquiry, onBook }: PlotS
   const hideTimer = React.useRef<number | null>(null)
   const list = sortPlots(plots || [])
   const hovered = list.find((plot) => plot._id === hoveredId) || null
-  const cardBelow = anchor.y < 48
   const cardRight = anchor.x > 58
 
   const placeCard = (el: HTMLElement) => {
@@ -65,7 +64,7 @@ export function PlotStatusGrid({ plots, onSelectPlot, onInquiry, onBook }: PlotS
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-brand-green/10 p-4 sm:p-5 h-[50vh] lg:h-full min-h-0 flex flex-col">
+    <div className="bg-white rounded-3xl border border-brand-green/10 p-4 sm:p-5 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3 shrink-0">
         <h3 className="font-serif text-lg font-bold text-brand-charcoal">Plot Inventory</h3>
         <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-brand-charcoal">
@@ -76,9 +75,9 @@ export function PlotStatusGrid({ plots, onSelectPlot, onInquiry, onBook }: PlotS
         </div>
       </div>
 
-      <div ref={boxRef} className="relative flex-1 min-h-0 rounded-2xl border border-brand-green/15 bg-[#f7f4ee] overflow-visible">
-        <div className="h-full overflow-y-auto p-3 sm:p-4">
-        <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+      <div ref={boxRef} className="relative rounded-2xl border border-brand-green/15 bg-[#f7f4ee] overflow-visible">
+        <div className="p-3 sm:p-4">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2.5 sm:gap-3">
           {list.map((plot) => {
             const status = String(plot.status || 'AVAILABLE').toUpperCase()
             const isHovered = hoveredId === plot._id
@@ -86,7 +85,7 @@ export function PlotStatusGrid({ plots, onSelectPlot, onInquiry, onBook }: PlotS
               <button
                 key={plot._id}
                 type="button"
-                className={`relative aspect-[1.15] rounded-md border text-[11px] sm:text-xs font-extrabold leading-tight flex flex-col items-center justify-center px-1 transition-transform cursor-pointer ${cellStyle(status)} ${
+                className={`relative aspect-square min-h-[48px] sm:min-h-[56px] rounded-lg border-2 text-sm sm:text-base font-extrabold leading-tight flex flex-col items-center justify-center px-1.5 transition-transform cursor-pointer ${cellStyle(status)} ${
                   isHovered ? 'z-10 scale-105 shadow-lg ring-2 ring-black/30' : 'hover:scale-105'
                 }`}
                 onMouseEnter={(e) => showPlot(plot._id, e.currentTarget)}
@@ -98,7 +97,7 @@ export function PlotStatusGrid({ plots, onSelectPlot, onInquiry, onBook }: PlotS
               >
                 <span>{plot.plotNo}</span>
                 {status !== 'AVAILABLE' && (
-                  <span className="text-[8px] font-bold uppercase tracking-wide opacity-90">{status}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wide opacity-90">{status}</span>
                 )}
               </button>
             )
@@ -111,11 +110,10 @@ export function PlotStatusGrid({ plots, onSelectPlot, onInquiry, onBook }: PlotS
             className="absolute z-30 w-56 pointer-events-auto bg-white text-black text-left rounded-2xl shadow-2xl border border-black/10 p-3"
             style={{
               left: `${anchor.x}%`,
-              top: cardBelow ? `${anchor.y}%` : undefined,
-              bottom: cardBelow ? undefined : `${100 - anchor.y}%`,
-              transform: cardRight ? 'translate(calc(-100% - 10px), 0)' : 'translate(10px, 0)',
-              marginTop: cardBelow ? 8 : undefined,
-              marginBottom: cardBelow ? undefined : 8,
+              top: `${anchor.y}%`,
+              transform: cardRight
+                ? 'translate(calc(-100% - 10px), calc(-100% - 12px))'
+                : 'translate(10px, calc(-100% - 12px))',
             }}
             onMouseEnter={() => showPlot(hovered._id)}
             onMouseLeave={hidePlot}

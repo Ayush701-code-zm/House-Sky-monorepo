@@ -36,7 +36,7 @@ function getS3Client() {
  * @returns {Promise<string>} Pre-signed URL valid for PRESIGNED_URL_EXPIRY seconds
  */
 async function getPresignedUrl(s3Key) {
-  const bucketName = process.env.AWS_S3_BUCKET_NAME || 'hsynr';
+  const bucketName = process.env.AWS_S3_BUCKET_NAME || 'houseandsky-assets';
   const client = getS3Client();
   if (!client) return null;
 
@@ -61,7 +61,7 @@ async function getPresignedUrl(s3Key) {
  */
 async function uploadToS3(fileBuffer, originalName = 'file.png', mimeType = 'image/png', folder = 'uploads') {
   const region = process.env.AWS_REGION || 'ap-south-1';
-  const bucketName = process.env.AWS_S3_BUCKET_NAME || 'hsynr';
+  const bucketName = process.env.AWS_S3_BUCKET_NAME || 'houseandsky-assets';
 
   const ext = path.extname(originalName) || '.png';
   const randomHash = crypto.randomBytes(8).toString('hex');

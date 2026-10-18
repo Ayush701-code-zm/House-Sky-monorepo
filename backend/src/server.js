@@ -39,7 +39,7 @@ app.use('/api/v1', apiRoutes);
 app.get('/', (req, res) => {
   res.json({
     status: 'online',
-    system: 'Hippo RealEstate CRM + Plot Management Platform API',
+    system: 'House & Sky Real Estate Platform API',
     version: '1.0.0',
     timestamp: new Date()
   });

@@ -190,10 +190,24 @@ export function NakshaDotMap({
       }
     }
   }
-  const cardBelow = hoverY < 48
   const cardRight = hoverX > 58
+  /** Inflate OCR boxes slightly so hit targets / fills are easier to see and hover. */
+  const BOX_SCALE = 1.35
 
   const clearHover = () => setHoveredId(null)
+
+  const scaledRect = (shape: Extract<PlotShape, { kind: 'rect' }>) => {
+    const w = Math.min(100, shape.w * BOX_SCALE)
+    const h = Math.min(100, shape.h * BOX_SCALE)
+    const cx = shape.x + shape.w / 2
+    const cy = shape.y + shape.h / 2
+    return {
+      x: Math.max(0, Math.min(100 - w, cx - w / 2)),
+      y: Math.max(0, Math.min(100 - h, cy - h / 2)),
+      w,
+      h,
+    }
+  }
 
   return (
     <div className="relative w-full isolate">
@@ -240,14 +254,15 @@ export function NakshaDotMap({
               },
             }
             if (shape.kind === 'rect') {
+              const box = scaledRect(shape)
               return (
                 <rect
                   key={plot._id}
                   {...common}
-                  x={shape.x}
-                  y={shape.y}
-                  width={shape.w}
-                  height={shape.h}
+                  x={box.x}
+                  y={box.y}
+                  width={box.w}
+                  height={box.h}
                 />
               )
             }
@@ -329,11 +344,10 @@ export function NakshaDotMap({
           className="absolute z-40 w-56 pointer-events-auto bg-white text-black text-left rounded-2xl shadow-2xl border border-black/10 p-3"
           style={{
             left: `${hoverX}%`,
-            top: cardBelow ? `${hoverY}%` : undefined,
-            bottom: cardBelow ? undefined : `${100 - hoverY}%`,
-            transform: cardRight ? 'translate(calc(-100% - 12px), 0)' : 'translate(12px, 0)',
-            marginTop: cardBelow ? '12px' : undefined,
-            marginBottom: cardBelow ? undefined : '12px',
+            top: `${hoverY}%`,
+            transform: cardRight
+              ? 'translate(calc(-100% - 12px), calc(-100% - 14px))'
+              : 'translate(12px, calc(-100% - 14px))',
           }}
           onMouseEnter={() => setHoveredId(hovered._id)}
           onMouseLeave={clearHover}

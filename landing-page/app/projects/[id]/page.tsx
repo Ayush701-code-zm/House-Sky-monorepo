@@ -13,7 +13,14 @@ import {
 import { getApiBaseUrl } from '@/utils/api'
 import { NakshaDotMap } from '@/components/real-estate/NakshaDotMap'
 import { PlotStatusGrid } from '@/components/real-estate/PlotStatusGrid'
+import dynamic from 'next/dynamic'
+import { hasValidCoords } from '@/components/maps/LocationMap'
 import { SITE } from '@/utils/siteConfig'
+
+const LocationMap = dynamic(
+  () => import('@/components/maps/LocationMap').then((m) => m.LocationMap),
+  { ssr: false, loading: () => <div className="w-full h-full min-h-[240px] bg-brand-soft animate-pulse" /> }
+)
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   security: <Shield className="w-4 h-4" />,
@@ -625,9 +632,16 @@ export default function ProjectDetailsPage() {
           </div>
         </div>
 
-        <section className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch h-auto lg:h-[85vh] lg:max-h-[85vh]">
-          <div className="bg-white rounded-3xl border border-brand-green/10 overflow-hidden h-[42vh] lg:h-full min-h-0">
-            {mapEmbedSrc ? (
+        <section className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="bg-white rounded-3xl border border-brand-green/10 overflow-hidden h-[320px] sm:h-[400px] lg:h-[440px]">
+            {hasValidCoords(project.latitude, project.longitude) ? (
+              <LocationMap
+                latitude={project.latitude}
+                longitude={project.longitude}
+                title={project.name}
+                className="rounded-3xl"
+              />
+            ) : mapEmbedSrc ? (
               <iframe
                 title="Project Location Map"
                 src={mapEmbedSrc}
@@ -641,7 +655,7 @@ export default function ProjectDetailsPage() {
               </a>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-brand-charcoal/50 px-6 text-center">
-                Google Maps location will appear after it is saved on this project.
+                Map location will appear after it is pinned on this project in admin.
               </div>
             )}
           </div>

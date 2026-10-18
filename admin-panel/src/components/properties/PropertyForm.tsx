@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { GalleryUploader } from '../common/GalleryUploader';
+import LocationMapPicker from '../common/LocationMapPicker';
 import { GalleryImage, ListingProperty, Project, PROPERTY_TYPES } from '../../types';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -48,6 +49,8 @@ export interface PropertyFormValues {
   floorPlanUrl: string;
   brochureUrl: string;
   videoUrl: string;
+  latitude: number | null;
+  longitude: number | null;
   googleMapsUrl: string;
   mapEmbedUrl: string;
   contactPhone: string;
@@ -92,6 +95,8 @@ export function emptyPropertyForm(): PropertyFormValues {
     floorPlanUrl: '',
     brochureUrl: '',
     videoUrl: '',
+    latitude: null,
+    longitude: null,
     googleMapsUrl: '',
     mapEmbedUrl: '',
     contactPhone: '',
@@ -142,6 +147,8 @@ export function propertyToForm(property: ListingProperty): PropertyFormValues {
     floorPlanUrl: property.floorPlanUrl || '',
     brochureUrl: property.brochureUrl || '',
     videoUrl: property.videoUrl || '',
+    latitude: property.latitude ?? null,
+    longitude: property.longitude ?? null,
     googleMapsUrl: property.googleMapsUrl || '',
     mapEmbedUrl: property.mapEmbedUrl || '',
     contactPhone: property.contactPhone || '',
@@ -188,6 +195,8 @@ export function formToPayload(form: PropertyFormValues) {
     floorPlanUrl: form.floorPlanUrl,
     brochureUrl: form.brochureUrl,
     videoUrl: form.videoUrl,
+    latitude: form.latitude,
+    longitude: form.longitude,
     googleMapsUrl: form.googleMapsUrl,
     mapEmbedUrl: form.mapEmbedUrl,
     contactPhone: form.contactPhone,
@@ -424,6 +433,23 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ value, onChange, pro
 
       <GalleryUploader items={value.gallery} onChange={(gallery) => patch({ gallery })} folder={GALLERY_FOLDER} label="Property Gallery (S3)" />
 
+      <LocationMapPicker
+        latitude={value.latitude}
+        longitude={value.longitude}
+        onChange={({ latitude, longitude, googleMapsUrl, mapEmbedUrl }) =>
+          patch({
+            latitude,
+            longitude,
+            ...(googleMapsUrl !== undefined ? { googleMapsUrl } : {}),
+            ...(mapEmbedUrl !== undefined ? { mapEmbedUrl } : {})
+          })
+        }
+      />
+      <div>
+        <label className={labelClass}>Google Maps URL (auto from pin)</label>
+        <input type="url" value={value.googleMapsUrl} onChange={(e) => patch({ googleMapsUrl: e.target.value })} className={inputClass} />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={labelClass}>Brochure URL</label>
@@ -436,10 +462,6 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ value, onChange, pro
         <div>
           <label className={labelClass}>Video URL</label>
           <input type="url" value={value.videoUrl} onChange={(e) => patch({ videoUrl: e.target.value })} className={inputClass} />
-        </div>
-        <div>
-          <label className={labelClass}>Google Maps URL</label>
-          <input type="url" value={value.googleMapsUrl} onChange={(e) => patch({ googleMapsUrl: e.target.value })} className={inputClass} />
         </div>
         <div>
           <label className={labelClass}>Contact Phone</label>

@@ -17,7 +17,7 @@ const mongoose = require('mongoose');
 exports.getPublicProjects = async (req, res, next) => {
   try {
     const projects = await Project.find({ status: { $ne: 'DELETED' } })
-      .select('name code location city state description highlights locationAdvantages amenities totalAreaSqft area totalPlots priceRange basePricePerSqft bannerImage bannerImageS3Key mapImageUrl mapImageS3Key logoImage insetImage gallery surveyNumber village googleMapsUrl mapEmbedUrl brochureUrl videoUrl contactPhone contactEmail legalInfo legalDocuments launchDate status isDholera')
+      .select('name code location city state description highlights locationAdvantages amenities totalAreaSqft area totalPlots priceRange basePricePerSqft bannerImage bannerImageS3Key mapImageUrl mapImageS3Key logoImage insetImage gallery surveyNumber village latitude longitude googleMapsUrl mapEmbedUrl brochureUrl videoUrl contactPhone contactEmail legalInfo legalDocuments launchDate status isDholera')
       .sort({ createdAt: -1 })
       .lean();
 

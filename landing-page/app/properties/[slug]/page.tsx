@@ -10,6 +10,13 @@ import { getApiBaseUrl } from '@/utils/api'
 import { FALLBACK_IMAGE } from '@/utils/siteConfig'
 import { Building2, CheckCircle2, ChevronRight, MapPin } from 'lucide-react'
 import { PageSection } from '@/components/layout/PageSection'
+import dynamic from 'next/dynamic'
+import { hasValidCoords } from '@/components/maps/LocationMap'
+
+const LocationMap = dynamic(
+  () => import('@/components/maps/LocationMap').then((m) => m.LocationMap),
+  { ssr: false, loading: () => <div className="w-full h-64 bg-brand-soft animate-pulse rounded-2xl" /> }
+)
 
 export default function PropertyDetailPage() {
   const params = useParams()
@@ -107,6 +114,26 @@ export default function PropertyDetailPage() {
                   <span>{item}</span>
                 </div>
               ))}
+            </div>
+          )}
+          {hasValidCoords(property.latitude, property.longitude) && (
+            <div className="rounded-2xl overflow-hidden border border-brand-green/15 h-64">
+              <LocationMap
+                latitude={property.latitude}
+                longitude={property.longitude}
+                title={property.title}
+              />
+            </div>
+          )}
+          {!hasValidCoords(property.latitude, property.longitude) && property.mapEmbedUrl && (
+            <div className="rounded-2xl overflow-hidden border border-brand-green/15 h-64">
+              <iframe
+                title="Property location"
+                src={property.mapEmbedUrl}
+                className="w-full h-full border-0"
+                loading="lazy"
+                allowFullScreen
+              />
             </div>
           )}
           <button

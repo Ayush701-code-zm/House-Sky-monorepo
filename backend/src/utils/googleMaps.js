@@ -31,11 +31,64 @@ function deriveMapEmbedUrl(googleMapsUrl) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed`;
 }
 
+/** Parse and validate a latitude/longitude pair. Returns nulls if either is missing/invalid. */
+function parseLatLng(payload = {}) {
+  const latRaw = payload.latitude;
+  const lngRaw = payload.longitude;
+  if (latRaw === undefined && lngRaw === undefined) {
+    return { touched: false, latitude: undefined, longitude: undefined };
+  }
+  if (latRaw === null || lngRaw === null || latRaw === '' || lngRaw === '') {
+    return { touched: true, latitude: null, longitude: null };
+  }
+  const latitude = Number(latRaw);
+  const longitude = Number(lngRaw);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return { touched: true, latitude: null, longitude: null };
+  }
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return { touched: true, latitude: null, longitude: null };
+  }
+  return { touched: true, latitude, longitude };
+}
+
+function mapsFromLatLng(latitude, longitude) {
+  if (latitude == null || longitude == null) {
+    return { googleMapsUrl: '', mapEmbedUrl: '' };
+  }
+  const q = `${latitude},${longitude}`;
+  return {
+    googleMapsUrl: `https://maps.google.com/?q=${encodeURIComponent(q)}`,
+    mapEmbedUrl: `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed`
+  };
+}
+
 function applyProjectMaps(payload = {}) {
+  const coords = parseLatLng(payload);
+  // Prefer explicit pin coordinates when provided — derive Google URLs from them.
+  if (coords.touched && coords.latitude != null && coords.longitude != null) {
+    const derived = mapsFromLatLng(coords.latitude, coords.longitude);
+    const googleMapsUrl = String(payload.googleMapsUrl || '').trim() || derived.googleMapsUrl;
+    const mapEmbedUrl = String(payload.mapEmbedUrl || '').trim() || derived.mapEmbedUrl;
+    return {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      googleMapsUrl,
+      mapEmbedUrl
+    };
+  }
+  if (coords.touched && coords.latitude == null) {
+    const googleMapsUrl = String(payload.googleMapsUrl || '').trim();
+    const mapEmbedUrl = String(payload.mapEmbedUrl || '').trim() || deriveMapEmbedUrl(googleMapsUrl);
+    return { latitude: null, longitude: null, googleMapsUrl, mapEmbedUrl };
+  }
+
   const googleMapsUrl = String(payload.googleMapsUrl || '').trim();
   const mapEmbedUrl = String(payload.mapEmbedUrl || '').trim() || deriveMapEmbedUrl(googleMapsUrl);
   return { googleMapsUrl, mapEmbedUrl };
 }
+
+const applyPropertyMaps = applyProjectMaps;
 
 function clampPercent(value) {
   const num = Number(value);
@@ -50,6 +103,9 @@ function isValidPercent(value) {
 module.exports = {
   deriveMapEmbedUrl,
   applyProjectMaps,
+  applyPropertyMaps,
+  parseLatLng,
+  mapsFromLatLng,
   clampPercent,
   isValidPercent
 };

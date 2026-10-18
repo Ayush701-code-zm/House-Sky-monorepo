@@ -140,6 +140,15 @@ const propertySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Exact pin set by admin (or owner) on the map (WGS84).
+  latitude: {
+    type: Number,
+    default: null
+  },
+  longitude: {
+    type: Number,
+    default: null
+  },
   googleMapsUrl: {
     type: String,
     default: ''

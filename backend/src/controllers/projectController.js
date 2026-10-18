@@ -148,7 +148,11 @@ exports.updateProject = async (req, res, next) => {
     const { id } = req.params;
     // Only re-derive map fields when the caller actually sent them; otherwise a
     // partial update would wipe the stored Google Maps URL / embed URL.
-    const touchesMaps = req.body.googleMapsUrl !== undefined || req.body.mapEmbedUrl !== undefined;
+    const touchesMaps =
+      req.body.googleMapsUrl !== undefined ||
+      req.body.mapEmbedUrl !== undefined ||
+      req.body.latitude !== undefined ||
+      req.body.longitude !== undefined;
     const maps = touchesMaps ? applyProjectMaps(req.body) : {};
     const project = await Project.findByIdAndUpdate(id, { ...req.body, ...maps }, { new: true });
     if (!project) return res.status(404).json({ message: 'Project not found' });

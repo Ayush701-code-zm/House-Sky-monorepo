@@ -72,6 +72,8 @@ function toPublicProperty(property) {
 }
 
 function buildPropertyPayload(body, slug) {
+  const { applyPropertyMaps } = require('../utils/googleMaps');
+  const maps = applyPropertyMaps(body);
   return {
     title: body.title,
     slug,
@@ -104,8 +106,10 @@ function buildPropertyPayload(body, slug) {
     floorPlanUrl: body.floorPlanUrl || '',
     brochureUrl: body.brochureUrl || '',
     videoUrl: body.videoUrl || '',
-    googleMapsUrl: body.googleMapsUrl || '',
-    mapEmbedUrl: body.mapEmbedUrl || '',
+    latitude: maps.latitude !== undefined ? maps.latitude : (body.latitude == null || body.latitude === '' ? null : Number(body.latitude)),
+    longitude: maps.longitude !== undefined ? maps.longitude : (body.longitude == null || body.longitude === '' ? null : Number(body.longitude)),
+    googleMapsUrl: maps.googleMapsUrl || body.googleMapsUrl || '',
+    mapEmbedUrl: maps.mapEmbedUrl || body.mapEmbedUrl || '',
     contactPhone: body.contactPhone || '',
     contactEmail: body.contactEmail || '',
     status: PROPERTY_STATUSES.includes(body.status) ? body.status : 'AVAILABLE',
@@ -491,7 +495,20 @@ exports.registerPublicProperty = async (req, res, next) => {
       area: String(body.area || '').substring(0, 100),
       address: String(body.address || '').substring(0, 500),
       pincode: String(body.pincode || '').substring(0, 10),
-      googleMapsUrl: String(body.googleMapsUrl || '').substring(0, 500),
+      ...(() => {
+        const { applyPropertyMaps } = require('../utils/googleMaps');
+        const maps = applyPropertyMaps(body);
+        return {
+          latitude: maps.latitude !== undefined
+            ? maps.latitude
+            : (Number.isFinite(Number(body.latitude)) ? Number(body.latitude) : null),
+          longitude: maps.longitude !== undefined
+            ? maps.longitude
+            : (Number.isFinite(Number(body.longitude)) ? Number(body.longitude) : null),
+          googleMapsUrl: String(maps.googleMapsUrl || body.googleMapsUrl || '').substring(0, 500),
+          mapEmbedUrl: String(maps.mapEmbedUrl || body.mapEmbedUrl || '').substring(0, 500)
+        };
+      })(),
       price: Number(body.price) || 0,
       pricePerSqft: Number(body.pricePerSqft) || 0,
       priceRange: String(body.priceRange || '').substring(0, 80),

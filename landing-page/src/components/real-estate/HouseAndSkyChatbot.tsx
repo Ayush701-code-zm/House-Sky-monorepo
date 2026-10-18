@@ -67,9 +67,16 @@ export function HouseAndSkyChatbot() {
     }
   }, [messages, isLoading, isSubmittingLead, leadSuccessMsg])
 
+  const lastSendAt = React.useRef(0)
+
   const handleSend = async (textToSend?: string) => {
-    const query = textToSend || input
-    if (!query.trim() || isLoading) return
+    const query = (textToSend || input).trim().slice(0, 500)
+    if (!query || isLoading) return
+
+    // Client-side cooldown — real enforcement is on /api/chat.
+    const now = Date.now()
+    if (now - lastSendAt.current < 1200) return
+    lastSendAt.current = now
 
     const userMsg: ChatMessage = {
       id: `usr-${Date.now()}`,
@@ -94,7 +101,11 @@ export function HouseAndSkyChatbot() {
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
-        text: data.reply || 'Thank you for reaching out. Our real estate advisory desk is at your service.',
+        text:
+          data.reply ||
+          (res.status === 429
+            ? 'You have reached the chat limit for now. Please try again shortly.'
+            : 'Thank you for reaching out. Our real estate advisory desk is at your service.'),
         properties: data.properties,
         showLeadForm: data.showLeadForm,
         leadCaptured: data.leadCaptured,

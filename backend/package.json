@@ -1,7 +1,7 @@
 {
-  "name": "hippo-mlm-crm-backend",
+  "name": "houseandsky-backend",
   "version": "1.0.0",
-  "description": "Real Estate MLM CRM + Plot Management Platform Backend (Node.js, Express, MongoDB)",
+  "description": "House & Sky Real Estate Platform Backend (Node.js, Express, MongoDB)",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

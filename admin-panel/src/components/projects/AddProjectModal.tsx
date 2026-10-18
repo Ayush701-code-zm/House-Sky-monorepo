@@ -17,6 +17,7 @@ import {
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { GalleryUploader } from '../common/GalleryUploader';
+import LocationMapPicker from '../common/LocationMapPicker';
 import { GalleryImage } from '../../types';
 
 interface AddProjectModalProps {
@@ -86,6 +87,9 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
   const [surveyNumber, setSurveyNumber] = useState('');
   const [village, setVillage] = useState('');
   const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [mapEmbedUrl, setMapEmbedUrl] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [logoImage, setLogoImage] = useState('');
   const [isDholera, setIsDholera] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -255,8 +259,12 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
   };
 
   const handleFinalSubmit = async () => {
-    if (!name || !code || !location || !googleMapsUrl) {
-      toast.error('Please fill in Project Name, Code, Location, and Google Maps URL');
+    if (!name || !code || !location) {
+      toast.error('Please fill in Project Name, Code, and Location');
+      return;
+    }
+    if (latitude == null || longitude == null) {
+      toast.error('Please pin the exact project location on the map');
       return;
     }
 
@@ -281,7 +289,10 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
         bannerImageS3Key,
         mapImageUrl: mapImageUrl,
         mapImageS3Key,
+        latitude,
+        longitude,
         googleMapsUrl,
+        mapEmbedUrl,
         brochureUrl,
         videoUrl,
         contactPhone,
@@ -542,9 +553,19 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
                   className="w-full bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
               </div>
             </div>
+            <LocationMapPicker
+              latitude={latitude}
+              longitude={longitude}
+              onChange={({ latitude: lat, longitude: lng, googleMapsUrl: gUrl, mapEmbedUrl: eUrl }) => {
+                setLatitude(lat);
+                setLongitude(lng);
+                if (gUrl !== undefined) setGoogleMapsUrl(gUrl);
+                if (eUrl !== undefined) setMapEmbedUrl(eUrl);
+              }}
+            />
             <div>
-              <label className="text-[#171A18]/70 font-semibold block mb-1">Google Maps URL</label>
-              <input required type="url" placeholder="https://maps.google.com/?q=Sector+80+Noida" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)}
+              <label className="text-[#171A18]/70 font-semibold block mb-1">Google Maps URL (auto from pin)</label>
+              <input type="url" placeholder="Set by map pin, or paste a custom URL" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)}
                 className="w-full bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
             </div>
             <GalleryUploader items={gallery} onChange={setGallery} folder="project_gallery" label="Project Photo Gallery (S3)" />

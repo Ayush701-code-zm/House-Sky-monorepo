@@ -103,6 +103,15 @@ const projectSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Exact pin set by admin on the map (WGS84). Used on the public site.
+  latitude: {
+    type: Number,
+    default: null
+  },
+  longitude: {
+    type: Number,
+    default: null
+  },
   googleMapsUrl: {
     type: String,
     default: ''

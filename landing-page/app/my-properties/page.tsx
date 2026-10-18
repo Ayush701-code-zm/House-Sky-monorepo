@@ -98,7 +98,6 @@ function StatusMessage({ property }: { property: MyProperty }) {
         {property.slug && (
           <Link
             href={`/properties/${property.slug}`}
-            target="_blank"
             className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:underline"
           >
             <ExternalLink className="w-3 h-3" /> View Public Listing
