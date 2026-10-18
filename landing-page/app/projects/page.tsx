@@ -326,7 +326,12 @@ function ProjectCard({ proj }: { proj: any }) {
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-brand-charcoal">
         {showBanner ? (
-          <Image src={proj.bannerImage} alt={proj.name || 'Project'} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+          <Image
+            src={proj.bannerImage}
+            alt={proj.name || 'Project'}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-700"
+          />
         ) : (
           <div className="absolute inset-0 bg-brand-green/80" />
         )}

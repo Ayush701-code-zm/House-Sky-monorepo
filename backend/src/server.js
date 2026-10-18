@@ -19,8 +19,19 @@ connectDB();
 
 // CORS — set CORS_ORIGINS (comma-separated) in production to restrict origins.
 // Falls back to '*' if unset so local dev / current deploy keep working.
+// In development, also accept the 127.0.0.1 twin of each localhost origin
+// (browsers treat them as different origins; Cursor/devtools often use 127.0.0.1).
+function expandLocalhostTwins(origins) {
+  if (origins === '*' || !Array.isArray(origins)) return origins;
+  const set = new Set(origins);
+  for (const o of origins) {
+    if (o.includes('://localhost')) set.add(o.replace('://localhost', '://127.0.0.1'));
+    if (o.includes('://127.0.0.1')) set.add(o.replace('://127.0.0.1', '://localhost'));
+  }
+  return [...set];
+}
 const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+  ? expandLocalhostTwins(process.env.CORS_ORIGINS.split(',').map((o) => o.trim()))
   : '*';
 app.use(cors({
   origin: corsOrigins,
