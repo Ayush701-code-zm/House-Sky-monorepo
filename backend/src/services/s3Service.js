@@ -9,10 +9,12 @@ const crypto = require('crypto');
 const PRESIGNED_URL_EXPIRY = 604800; // 7 days
 
 function getS3Client() {
+  const region = process.env.AWS_REGION || 'ap-south-1';
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  const region = process.env.AWS_REGION || 'ap-south-1';
 
+  // Prefer explicit env keys (CI/production). Otherwise use the default AWS
+  // credential chain — ~/.aws/credentials via AWS_PROFILE (e.g. house-and-sky).
   if (accessKeyId && secretAccessKey) {
     return new S3Client({
       region,
@@ -22,7 +24,9 @@ function getS3Client() {
       }
     });
   }
-  return null;
+
+  // No explicit keys: SDK resolves AWS_PROFILE / shared credentials / IAM role.
+  return new S3Client({ region });
 }
 
 /**
@@ -65,12 +69,12 @@ async function uploadToS3(fileBuffer, originalName = 'file.png', mimeType = 'ima
   const filename = `${folder}/${Date.now()}_${cleanName}_${randomHash}${ext}`;
   const plainS3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${filename}`;
 
-  const client = getS3Client();
-
-  if (!client || !fileBuffer) {
-    console.warn('[S3 Upload] AWS credentials not found, returning placeholder URL');
+  if (!fileBuffer) {
+    console.warn('[S3 Upload] No file buffer provided, returning placeholder URL');
     return { url: plainS3Url, key: filename };
   }
+
+  const client = getS3Client();
 
   try {
     // Upload file to S3 (no ACL needed — works with Block Public Access on)

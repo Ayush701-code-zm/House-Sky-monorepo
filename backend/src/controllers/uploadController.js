@@ -1,14 +1,21 @@
 const { uploadToS3 } = require('../services/s3Service');
+const { ALLOWED_MIMES } = require('../middleware/upload');
 
 /**
  * Handle generic file/image upload to AWS S3
  * Returns a pre-signed URL valid for 7 days (works with private buckets)
- * POST /api/v1/upload
+ * POST /api/v1/upload  (authenticated)
  */
 exports.uploadFile = async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file provided' });
+    }
+
+    // Defense in depth — multer fileFilter should already enforce this.
+    const mime = String(req.file.mimetype || '').toLowerCase();
+    if (!ALLOWED_MIMES.has(mime)) {
+      return res.status(400).json({ message: 'Only JPEG, PNG, WebP, GIF images and PDF documents are allowed' });
     }
 
     // The folder becomes the S3 key prefix — restrict it to a safe charset so a

@@ -277,10 +277,15 @@ function SingleDocUploader({
   const [uploading, setUploading] = React.useState(false)
   const [error, setError] = React.useState('')
   const baseUrl = getApiBaseUrl()
+  const { token } = useOwnerAuth()
 
   const handleFile = async (file: File) => {
-    if (file.size > 8 * 1024 * 1024) {
-      setError('File size exceeds 8MB limit')
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File size exceeds 50MB limit')
+      return
+    }
+    if (!token) {
+      setError('Please log in again to upload files')
       return
     }
     setError('')
@@ -291,8 +296,9 @@ function SingleDocUploader({
       formData.append('file', file)
       formData.append('folder', 'kyc-documents')
 
-      const res = await fetch(`${baseUrl}/public/upload`, {
+      const res = await fetch(`${baseUrl}/upload`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       })
       const data = await res.json().catch(() => ({}))
@@ -352,7 +358,7 @@ function SingleDocUploader({
           <div className="space-y-1 py-1">
             <Upload className="w-6 h-6 text-brand-green/60 mx-auto" />
             <p className="text-xs font-bold text-brand-charcoal">Click to upload document proof</p>
-            <p className="text-[10px] text-brand-charcoal/50">{description} · JPG, PNG, PDF (Max 8MB)</p>
+            <p className="text-[10px] text-brand-charcoal/50">{description} · JPG, PNG, PDF (Max 50MB)</p>
           </div>
         )}
       </div>

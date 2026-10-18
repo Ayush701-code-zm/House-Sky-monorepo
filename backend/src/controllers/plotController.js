@@ -243,10 +243,11 @@ exports.updatePlotMarker = async (req, res, next) => {
 
 exports.getUserProperties = async (req, res, next) => {
   try {
-    const userEmail = req.user ? req.user.email : queryString(req.query.email);
-    // Never fall back to an empty filter — that would return every plot and
-    // every sale transaction to an anonymous caller.
-    if (!userEmail) return res.json({ plots: [], transactions: [] });
+    // Always scope to the authenticated user — never trust ?email= (IDOR).
+    const userEmail = req.user && req.user.email;
+    if (!userEmail) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
 
     const plots = await Plot.find({ ownerEmail: userEmail }).populate('projectId');
     const transactions = await Transaction.find({ buyerEmail: userEmail })

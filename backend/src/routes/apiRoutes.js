@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-
 const authController = require('../controllers/authController');
 const employeeController = require('../controllers/employeeController');
 const mlmController = require('../controllers/mlmController');
@@ -29,8 +27,7 @@ const settingController = require('../controllers/settingController');
 const { protect, authorize } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
 const { validate } = require('../middleware/validate');
-
-const upload = multer({ storage: multer.memoryStorage() });
+const { upload } = require('../middleware/upload');
 
 const ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE', 'AGENT', 'DIRECTOR'];
 const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'];
@@ -42,10 +39,23 @@ const PROPERTY_STATUSES = ['AVAILABLE', 'BOOKED', 'SOLD', 'UPCOMING'];
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many attempts, please try again later.' });
 const inquiryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many inquiries submitted. Please wait a few minutes before trying again.' });
 const propertySubmitLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 'Too many property submissions. Please wait before submitting again.' });
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many uploads. Please wait a few minutes before trying again.' });
 
+// Multer errors (file type / size) → clean 400 instead of opaque 500
+function handleUploadError(err, _req, res, next) {
+  if (!err) return next();
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ message: 'File exceeds the 50MB size limit' });
+  }
+  if (err.name === 'MulterError' || /not allowed|Only JPEG/i.test(err.message || '')) {
+    return res.status(400).json({ message: err.message || 'Invalid file upload' });
+  }
+  return next(err);
+}
 
-router.post('/upload', protect, upload.single('file'), uploadController.uploadFile);
-router.post('/public/upload', upload.single('file'), uploadController.uploadFile);
+router.post('/upload', protect, uploadLimiter, upload.single('file'), handleUploadError, uploadController.uploadFile);
+// Kept for older clients; requires auth — anonymous upload is no longer allowed.
+router.post('/public/upload', protect, uploadLimiter, upload.single('file'), handleUploadError, uploadController.uploadFile);
 
 
 router.get('/public/projects', inquiryController.getPublicProjects);
@@ -238,12 +248,7 @@ router.patch('/properties/:id/status', protect, authorize('ADMIN', 'DIRECTOR', '
 router.delete('/properties/:id', protect, authorize('ADMIN'), propertyController.deleteProperty);
 
 // --- Plot Management & Sales Routes ---
-router.get('/user/my-properties', (req, res, next) => {
-  if (req.headers.authorization) {
-    return protect(req, res, next);
-  }
-  next();
-}, plotController.getUserProperties);
+router.get('/user/my-properties', protect, plotController.getUserProperties);
 router.get('/plots', protect, plotController.getPlots);
 router.get('/plots/export-csv', protect, authorize('ADMIN', 'DIRECTOR', 'MANAGER'), plotController.exportPlotsCSV);
 router.post('/plots/compute-price', protect, authorize('ADMIN', 'DIRECTOR', 'MANAGER'), plotController.computePricePreview);
