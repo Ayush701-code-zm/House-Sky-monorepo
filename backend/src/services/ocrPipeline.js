@@ -16,6 +16,13 @@ const {
   MAX_OUTPUT_TOKENS
 } = require('./ocrPrompts');
 
+// #region agent log
+const __dbgFs = require('fs');
+function __dbg(hypothesisId, location, message, data) {
+  try { __dbgFs.appendFileSync('/Users/ayushanand/Developer/Autoroma-perume/.cursor/debug-e67702.log', JSON.stringify({ sessionId: 'e67702', runId: 'post-fix', hypothesisId, location, message, data, timestamp: Date.now() }) + '\n'); } catch (_) {}
+}
+// #endregion
+
 
 
 /** Simplified grid for faster OCR - covers most standard layouts */
@@ -43,6 +50,7 @@ function buildFullCoverageTiles() {
   return tiles; // 10 tiles total instead of 19
 }
 const TILE_ATTEMPTS = 2; // Reduced from 3 to speed up OCR
+const TILE_CONCURRENCY = Number(process.env.OCR_TILE_CONCURRENCY) || 3;
 
 function mimeFromFileName(fileName, fallback = 'image/jpeg') {
   const ext = path.extname(fileName || '').toLowerCase();
@@ -162,13 +170,23 @@ async function generateJsonFromImage({ fileBuffer, mimeType, prompt }) {
             responseMimeType: 'application/json'
           }
         });
+        // #region agent log
+        const __t0 = Date.now();
+        // #endregion
         const result = await model.generateContent([
           prompt,
           { inlineData: { data: fileBuffer.toString('base64'), mimeType } }
         ]);
-        return parseModelJson(result.response.text());
+        // #region agent log
+        const __txt = result.response.text();
+        __dbg('AB', 'ocrPipeline.js:generateJsonFromImage', 'gemini call ok', { modelName, attempt, elapsedMs: Date.now() - __t0, responseChars: __txt.length, imageKB: Math.round(fileBuffer.length / 1024), promptKind: prompt.slice(0, 40) });
+        return parseModelJson(__txt);
+        // #endregion
       } catch (error) {
         lastError = error;
+        // #region agent log
+        __dbg('AB', 'ocrPipeline.js:generateJsonFromImage', 'gemini call failed', { modelName, attempt, error: String(error && error.message).slice(0, 400), status: error && (error.status || error.statusCode || error.code), isModelMissing: isModelMissingError(error), isRateLimit: isRateLimitError(error) });
+        // #endregion
         console.warn(`[OCR] Gemini (${modelName}) attempt ${attempt}:`, error.message);
         if (isModelMissingError(error)) break;
         if (isRateLimitError(error)) {
@@ -290,8 +308,11 @@ async function extractPlotsFromTiles(rawBuffer) {
   const warnings = [];
   const tiles = buildFullCoverageTiles();
 
-  // Sequential tiles: paid/free quota bursts kill parallel 3-wide batches on Gemini.
-  for (let i = 0; i < tiles.length; i += 1) {
+  // Tiles run through a small worker pool: fully sequential processing took ~4 min
+  // on a 10-tile naksha (single Gemini calls can take 30-45s), which exceeds the
+  // 300s request limit. Rate-limit hits are still retried with backoff per call.
+  const tileResults = new Array(tiles.length);
+  const runTile = async (i) => {
     const tile = tiles[i];
     try {
       const { buffer: tileBuffer, rect } = await cropTile(fileBuffer, tile, imageWidth, imageHeight);
@@ -306,13 +327,30 @@ async function extractPlotsFromTiles(rawBuffer) {
         ...globalGeometry(plot, rect, imageWidth, imageHeight)
       }, index)).filter(Boolean);
       console.log(`[OCR] tile ${tile.id} extracted ${mapped.length} plots`);
-      allPlots.push(...mapped);
+      // #region agent log
+      __dbg('E', 'ocrPipeline.js:extractPlotsFromTiles', 'tile ok', { tile: tile.id, plots: mapped.length, rawPlots: payload.plots.length, tileIndex: i, totalTiles: tiles.length });
+      // #endregion
+      tileResults[i] = mapped;
     } catch (error) {
       failedTiles.push(tile.id);
+      // #region agent log
+      __dbg('AB', 'ocrPipeline.js:extractPlotsFromTiles', 'tile failed', { tile: tile.id, error: String(error && error.message).slice(0, 300), failedSoFar: failedTiles.length });
+      // #endregion
       console.warn(`[OCR] tile ${tile.id} failed:`, error.message);
+      tileResults[i] = [];
     }
-    if (i + 1 < tiles.length) await sleep(800);
-  }
+  };
+  let nextTile = 0;
+  const worker = async () => {
+    while (nextTile < tiles.length) {
+      const i = nextTile;
+      nextTile += 1;
+      await runTile(i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(TILE_CONCURRENCY, tiles.length) }, worker));
+  // Keep deterministic tile order so merge/plot numbering is stable across runs.
+  for (const mapped of tileResults) allPlots.push(...(mapped || []));
 
   if (failedTiles.length >= 3) {
     const error = new Error(`OCR incomplete (${failedTiles.join(', ')} failed). Wait a minute and analyze again so inventory is not overwritten.`);
@@ -388,6 +426,10 @@ async function processMapImageOCR({ projectId, mapName, fileBuffer, fileName, mi
   }
 
   const resolvedMime = mimeType || mimeFromFileName(fileName);
+  // #region agent log
+  const __start = Date.now();
+  __dbg('CDE', 'ocrPipeline.js:processMapImageOCR', 'start', { projectId, fileName, mimeType: resolvedMime, fileKB: Math.round(fileBuffer.length / 1024), hasGeminiKey: Boolean(process.env.GEMINI_API_KEY), model: process.env.GEMINI_VISION_MODEL, awsProfile: process.env.AWS_PROFILE, pid: process.pid });
+  // #endregion
   if (resolvedMime === 'application/pdf') {
     const error = new Error('Upload a JPG or PNG naksha. PDF is not supported for plot OCR.');
     error.statusCode = 400;
@@ -404,7 +446,17 @@ async function processMapImageOCR({ projectId, mapName, fileBuffer, fileName, mi
     invalid.statusCode = 400;
     throw invalid;
   }
-  const uploadResult = await uploadToS3(displayBuffer, fileName, resolvedMime, 'naksa_layouts');
+  // #region agent log
+  __dbg('D', 'ocrPipeline.js:processMapImageOCR', 'before s3 upload', { elapsedMs: Date.now() - __start });
+  let uploadResult;
+  try {
+    uploadResult = await uploadToS3(displayBuffer, fileName, resolvedMime, 'naksa_layouts');
+    __dbg('D', 'ocrPipeline.js:processMapImageOCR', 'after s3 upload', { elapsedMs: Date.now() - __start, ok: Boolean(uploadResult) });
+  } catch (error) {
+    __dbg('D', 'ocrPipeline.js:processMapImageOCR', 's3 upload threw', { elapsedMs: Date.now() - __start, error: String(error && error.message).slice(0, 300) });
+    throw error;
+  }
+  // #endregion
   const s3ImageUrl = typeof uploadResult === 'string' ? uploadResult : (uploadResult?.url || '');
   const imageS3Key = typeof uploadResult === 'string' ? '' : (uploadResult?.key || '');
 
@@ -414,19 +466,31 @@ async function processMapImageOCR({ projectId, mapName, fileBuffer, fileName, mi
     throw error;
   }
 
-  let projectMeta = {};
-  try {
-    const metaParsed = await generateJsonFromImage({
-      fileBuffer,
-      mimeType: resolvedMime === 'application/pdf' ? 'application/pdf' : resolvedMime,
-      prompt: META_PROMPT
+  // The project-meta pass is independent of plot extraction, so it runs alongside
+  // the tile pass instead of adding ~15s in front of it.
+  const metaPromise = generateJsonFromImage({
+    fileBuffer,
+    mimeType: resolvedMime === 'application/pdf' ? 'application/pdf' : resolvedMime,
+    prompt: META_PROMPT
+  })
+    .then((metaParsed) => normalizeProjectMeta(metaParsed.projectMeta || metaParsed))
+    .catch((error) => {
+      console.warn('[OCR] project meta pass failed:', error.message);
+      return {};
     });
-    projectMeta = normalizeProjectMeta(metaParsed.projectMeta || metaParsed);
-  } catch (error) {
-    console.warn('[OCR] project meta pass failed:', error.message);
-  }
 
-  const { plots: extractedPlots, warnings: ocrWarnings } = await extractPlotsFromTiles(displayBuffer);
+  // #region agent log
+  __dbg('E', 'ocrPipeline.js:processMapImageOCR', 'starting tiles (meta pass running concurrently)', { elapsedMs: Date.now() - __start, tileConcurrency: TILE_CONCURRENCY });
+  let extractedPlots, ocrWarnings;
+  try {
+    ({ plots: extractedPlots, warnings: ocrWarnings } = await extractPlotsFromTiles(displayBuffer));
+    __dbg('E', 'ocrPipeline.js:processMapImageOCR', 'tiles done', { elapsedMs: Date.now() - __start, plots: extractedPlots.length, warnings: ocrWarnings });
+  } catch (error) {
+    __dbg('ABE', 'ocrPipeline.js:processMapImageOCR', 'tiles threw', { elapsedMs: Date.now() - __start, error: String(error && error.message).slice(0, 300), statusCode: error && error.statusCode });
+    throw error;
+  }
+  // #endregion
+  const projectMeta = await metaPromise;
   if (extractedPlots.length === 0) {
     const error = new Error('AI could not read plot boxes from this naksha. Upload a clearer layout image.');
     error.statusCode = 422;

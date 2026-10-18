@@ -73,21 +73,35 @@ exports.approveMapOverlay = async (req, res, next) => {
       { merge: false }
     );
 
+    // #region agent log
+    const __dbg = (hypothesisId, message, data) => { try { require('fs').appendFileSync('/Users/ayushanand/Developer/Autoroma-perume/.cursor/debug-e67702.log', JSON.stringify({ sessionId: 'e67702', runId: 'approve-post-fix', hypothesisId, location: 'ocrController.js:approveMapOverlay', message, data, timestamp: Date.now() }) + '\n'); } catch (_) {} };
+    __dbg('F', 'approve input', { mapId, reviewed, rawCount: rawPlots.length, normalizedCount: normalizedPlots.length, droppedByNormalize: rawPlots.length - normalizedPlots.length, sampleRaw: rawPlots.slice(0, 3).map((p) => ({ plotNo: p.plotNo, block: p.block, sellableSqYrd: p.sellableSqYrd, hasMarker: Boolean(p.marker || p.markerXPercent) })) });
+    // #endregion
     if (normalizedPlots.length === 0) {
+      // #region agent log
+      __dbg('F', '422 no readable plots', { rawCount: rawPlots.length });
+      // #endregion
       return res.status(422).json({ message: 'No readable plots to approve. Re-upload a clearer naksha.' });
     }
 
+    // A plot is identified by block + plotNo (Plot schema unique index), because
+    // nakshas restart numbering per block (Block A plot 7 and Block B plot 7 coexist).
+    const plotKey = (plot) => `${String(plot.block || '').toUpperCase()}|${String(plot.plotNo).toUpperCase()}`;
+    const plotLabel = (plot) => (plot.block ? `${plot.block}-${plot.plotNo}` : String(plot.plotNo));
     if (reviewed) {
       const seen = new Set();
-      const duplicates = new Set();
+      const duplicates = new Map();
       normalizedPlots.forEach((plot) => {
-        const key = String(plot.plotNo).toUpperCase();
-        if (seen.has(key)) duplicates.add(plot.plotNo);
+        const key = plotKey(plot);
+        if (seen.has(key)) duplicates.set(key, plotLabel(plot));
         seen.add(key);
       });
+      // #region agent log
+      __dbg('G', 'duplicate check (block+plotNo)', { duplicates: Array.from(duplicates.values()), dupDetails: normalizedPlots.filter((p) => duplicates.has(plotKey(p))).map((p) => ({ plotNo: p.plotNo, block: p.block, sellableSqYrd: p.sellableSqYrd, x: p.marker && p.marker.xPercent, y: p.marker && p.marker.yPercent })) });
+      // #endregion
       if (duplicates.size) {
         return res.status(422).json({
-          message: `Duplicate plot numbers: ${Array.from(duplicates).join(', ')}. Give each plot a unique number before saving.`
+          message: `Duplicate plots in the same block: ${Array.from(duplicates.values()).join(', ')}. Fix the block or plot number of these rows before saving.`
         });
       }
     }
@@ -112,14 +126,14 @@ exports.approveMapOverlay = async (req, res, next) => {
     Object.assign(projectPatch, mergeProjectMeta(project, normalizeProjectMeta(plotMap.extractedProjectMeta || {})));
     await Project.findByIdAndUpdate(plotMap.projectId, projectPatch);
 
-    const keptPlotNos = [];
+    const keptPlotIds = [];
     for (const plotData of normalizedPlots) {
       const priced = buildPricedPlot(plotData, project.basePricePerSqft);
-      keptPlotNos.push(priced.plotNo);
-      const existing = await Plot.findOne({ projectId: plotMap.projectId, plotNo: priced.plotNo });
+      const identity = { projectId: plotMap.projectId, block: priced.block, plotNo: priced.plotNo };
+      const existing = await Plot.findOne(identity);
       const nextStatus = resolveApproveStatus(existing, priced.status || DEFAULT_STATUS);
-      await Plot.findOneAndUpdate(
-        { projectId: plotMap.projectId, plotNo: priced.plotNo },
+      const saved = await Plot.findOneAndUpdate(
+        identity,
         {
           projectId: plotMap.projectId,
           block: priced.block,
@@ -149,17 +163,21 @@ exports.approveMapOverlay = async (req, res, next) => {
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
+      keptPlotIds.push(saved._id);
     }
 
     await Plot.deleteMany({
       projectId: plotMap.projectId,
       status: DEFAULT_STATUS,
-      plotNo: { $nin: keptPlotNos }
+      _id: { $nin: keptPlotIds }
     });
 
+    // #region agent log
+    __dbg('G', 'approve saved', { plotCount: keptPlotIds.length });
+    // #endregion
     res.json({
       message: 'Naksha approved. Plot inventory synced from AI extraction.',
-      plotCount: keptPlotNos.length,
+      plotCount: keptPlotIds.length,
       plotMap
     });
   } catch (error) {

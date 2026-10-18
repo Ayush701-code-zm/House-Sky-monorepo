@@ -13,6 +13,8 @@ import { useToast } from '../../context/ToastContext';
 
 interface ExtractedPlot {
   plotNo: string;
+  /** Block/sector letter; plot identity is block + plotNo (numbers repeat across blocks). */
+  block?: string;
   status: string;
   facing?: string;
   plotType?: string;
@@ -157,9 +159,10 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
       });
       toast.success(`✅ ${plots.length} plots saved to database successfully!`);
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to save plots. Please try again.');
+      // Surface the server's reason (e.g. which plots are duplicated) so the reviewer can fix rows.
+      toast.error(error?.friendlyMessage || error?.response?.data?.message || 'Failed to save plots. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -378,6 +381,7 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                 <thead className="bg-[#E8F0EC] text-[#0B4F3C] text-[10px] uppercase tracking-wider sticky top-0 z-10">
                   <tr>
                     <th className="px-3 py-2.5 text-left font-bold whitespace-nowrap">#</th>
+                    <th className="px-3 py-2.5 text-left font-bold whitespace-nowrap">Block</th>
                     <th className="px-3 py-2.5 text-left font-bold whitespace-nowrap">Plot No</th>
                     <th className="px-3 py-2.5 text-left font-bold whitespace-nowrap">Status</th>
                     <th className="px-3 py-2.5 text-right font-bold whitespace-nowrap">Size (sq yd)</th>
@@ -396,6 +400,9 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                         onClick={() => setEditingIdx(editingIdx === idx ? null : idx)}
                       >
                         <td className="px-3 py-2.5 text-[#171A18]/50 font-mono">{idx + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <span className="font-bold text-[#171A18]/70 font-mono">{p.block || '—'}</span>
+                        </td>
                         <td className="px-3 py-2.5">
                           <span className="font-bold text-[#0B4F3C] font-mono">{p.plotNo}</span>
                         </td>
@@ -440,8 +447,18 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                       {/* Inline Edit Row */}
                       {editingIdx === idx && (
                         <tr className="bg-[#E8F0EC]/50">
-                          <td colSpan={9} className="px-4 py-3">
+                          <td colSpan={10} className="px-4 py-3">
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                              <div>
+                                <label className="text-[10px] font-bold text-[#171A18]/60 block mb-1">Block</label>
+                                <input
+                                  type="text"
+                                  value={p.block || ''}
+                                  placeholder="A"
+                                  onChange={(e) => handleFieldChange(idx, 'block', e.target.value.toUpperCase())}
+                                  className="w-full bg-white border border-[#0B4F3C]/20 rounded-lg px-2 py-1.5 text-[#171A18] font-bold text-xs focus:outline-none focus:border-[#0B4F3C]"
+                                />
+                              </div>
                               <div>
                                 <label className="text-[10px] font-bold text-[#171A18]/60 block mb-1">Plot No</label>
                                 <input
