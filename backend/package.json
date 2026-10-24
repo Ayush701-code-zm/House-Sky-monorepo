@@ -7,6 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/utils/seedData.js",
+    "seed:properties": "node src/utils/seedCatalogProperties.js",
     "seed:clean": "node src/utils/cleanSeedData.js",
     "test": "jest"
   },
