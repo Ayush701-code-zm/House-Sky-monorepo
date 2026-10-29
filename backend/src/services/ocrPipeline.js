@@ -38,7 +38,9 @@ function buildFullCoverageTiles() {
   }
   // Only bottom-right edge for plots near corners
   tiles.push({ id: 'ER', x0: 0.65, x1: 1, y0: 0.65, y1: 1 });
-  return tiles; // 10 tiles total instead of 19
+  // Whole picture: no plot is cut at an edge here, so printed numbers that a tile split stay readable.
+  tiles.push({ id: 'FULL', x0: 0, x1: 1, y0: 0, y1: 1 });
+  return tiles;
 }
 const TILE_ATTEMPTS = 2; // Reduced from 3 to speed up OCR
 const TILE_CONCURRENCY = Number(process.env.OCR_TILE_CONCURRENCY) || 3;
@@ -337,6 +339,10 @@ async function extractPlotsFromTiles(rawBuffer) {
   }
 
   const merged = finalizeExtractedPlots(allPlots);
+  const unnumbered = merged.filter((plot) => plot.numberNotPrinted).map((plot) => plot.plotNo);
+  if (unnumbered.length) {
+    warnings.push(`${unnumbered.length} plot(s) had no readable number on the naksha (${unnumbered.join(', ')}). Type the right number or remove them.`);
+  }
   let soldPassFailed = false;
   const stamped = await applySoldStamps(fileBuffer, merged, {
     onError: () => { soldPassFailed = true; }

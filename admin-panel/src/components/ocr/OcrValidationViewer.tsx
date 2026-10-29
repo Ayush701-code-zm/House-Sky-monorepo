@@ -7,7 +7,8 @@ import {
   ZoomIn,
   ChevronDown,
   ChevronUp,
-  Mic
+  Mic,
+  Trash2
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -33,6 +34,8 @@ interface ExtractedPlot {
   gstOnOtherCharges?: number;
   totalCost?: number;
   confidence: number;
+  /** Set when the naksha had no readable number for this box and the server filled one in. */
+  numberNotPrinted?: boolean;
   /** Plot centre, 0-100 % of the full (EXIF-oriented) naksha image */
   marker?: { xPercent?: number | null; yPercent?: number | null } | null;
   /** Plot bounding box (top-left + size), 0-100 % of the full naksha image */
@@ -107,6 +110,41 @@ function plotOrder(a: ExtractedPlot, b: ExtractedPlot) {
   return String(a.plotNo || '').localeCompare(String(b.plotNo || ''));
 }
 
+/** Pull plot number, status, size, PLC, cost, and dimensions out of one spoken sentence. */
+function parseSpokenPlot(said: string): Partial<ExtractedPlot> {
+  const text = said.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  const patch: Partial<ExtractedPlot> = {};
+  const after = '(?:\\s+(?!\\d)[a-z]+){0,4}\\s+(\\d+(?:\\.\\d+)?)';
+
+  const plotMatch = text.match(new RegExp(`\\bplot(?:\\s+number)?\\s+([a-z]?\\s*-?\\s*\\d+[a-z]?)\\b`));
+  if (plotMatch) patch.plotNo = plotMatch[1].replace(/\s+/g, '').toUpperCase();
+
+  if (/\bsold\b/.test(text)) patch.status = 'SOLD';
+  else if (/\bbooked\b|\bhold\b|\breserved\b/.test(text)) patch.status = 'BOOKED';
+  else if (/\bpending\b/.test(text)) patch.status = 'PENDING';
+  else if (/\bavailable\b/.test(text)) patch.status = 'AVAILABLE';
+
+  const yard = text.match(new RegExp(`(?:sellable|syllable|syllabe|syllabus|square\\s*yards?|sq\\.?\\s*yards?|sq\\.?\\s*yd)${after}`));
+  if (yard) patch.sellableSqYrd = Number(yard[1]);
+
+  const plc = text.match(new RegExp(`(?:total\\s+)?plcs?${after}`));
+  if (plc) patch.totalPlc = Number(plc[1]);
+
+  const cost = text.match(new RegExp(`(?:total\\s+)?cost${after}`));
+  if (cost) patch.totalCost = Number(cost[1]);
+
+  const otmc = text.match(new RegExp(`\\botmc\\b${after}`));
+  if (otmc) patch.otmc = Number(otmc[1]);
+
+  const gst = text.match(new RegExp(`(?:\\b(?:gst|jst)\\b|\\bg\\s+s\\s+t\\b|\\bgoods and services tax\\b)${after}`));
+  if (gst) patch.gstOnOtherCharges = Number(gst[1]);
+
+  const dim = text.match(/dimensions?(?:\s+\w+){0,4}\s+(\d+)\s*(?:cross|by|x|into)\s*(\d+)/);
+  if (dim) patch.dimensions = `${dim[1]}x${dim[2]}`;
+
+  return patch;
+}
+
 function sequenceNotes(rows: ExtractedPlot[]): string[] {
   const notes: string[] = [];
   const seen = new Set<string>();
@@ -125,6 +163,10 @@ function sequenceNotes(rows: ExtractedPlot[]): string[] {
     groups.set(block, list);
   });
   if (dupes.length) notes.push(`Duplicate plot numbers: ${Array.from(new Set(dupes)).join(', ')}`);
+  const guessed = rows.filter((plot) => plot.numberNotPrinted).map((plot) => plot.plotNo);
+  if (guessed.length) {
+    notes.push(`No number printed on the naksha for ${guessed.join(', ')}. Type the right number or remove the row.`);
+  }
   groups.forEach((nums, block) => {
     const unique = Array.from(new Set(nums)).sort((a, b) => a - b);
     const gaps: string[] = [];
@@ -140,13 +182,16 @@ function sequenceNotes(rows: ExtractedPlot[]): string[] {
   return notes;
 }
 
+type SpeechResult = ArrayLike<{ transcript?: string }> & { isFinal?: boolean };
+
 type SpeechRec = {
   lang: string;
   interimResults: boolean;
+  continuous: boolean;
   start: () => void;
   stop: () => void;
-  onresult: (event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void;
-  onerror: () => void;
+  onresult: (event: { results?: ArrayLike<SpeechResult> }) => void;
+  onerror: (event?: { error?: string }) => void;
   onend: () => void;
 };
 
@@ -172,11 +217,65 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
   const [listening, setListening] = useState(false);
   const [micNote, setMicNote] = useState('');
   const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const listeningRef = useRef(false);
+  const plotsRef = useRef(plots);
+  const editingIdxRef = useRef(editingIdx);
+  plotsRef.current = plots;
+  editingIdxRef.current = editingIdx;
   const orderNotes = sequenceNotes(plots);
 
-  useEffect(() => () => recognitionRef.current?.stop(), []);
+  useEffect(() => () => {
+    listeningRef.current = false;
+    recognitionRef.current?.stop();
+  }, []);
+
+  const applySpoken = (said: string) => {
+    const patch = parseSpokenPlot(said);
+    const fields = Object.keys(patch);
+    if (fields.length === 0) {
+      setMicNote(`Heard “${said}”. Still listening — say plot number, status, square yard, plc, cost, gst, or dimension.`);
+      return;
+    }
+    const rows = plotsRef.current;
+    let idx = editingIdxRef.current;
+    if (patch.plotNo) {
+      const wanted = patch.plotNo;
+      const matches = rows
+        .map((plot, index) => ({ index, no: String(plot.plotNo || '').replace(/\s+/g, '').toUpperCase() }))
+        .filter((row) => row.no === wanted);
+      if (matches.length) idx = (matches.find((row) => row.index === idx) || matches[0]).index;
+    }
+    if (idx === null) {
+      setMicNote('Select a plot row, or say which plot, for example “plot 32”. Still listening.');
+      return;
+    }
+    const updated = [...rows];
+    updated[idx] = { ...updated[idx], ...patch };
+    plotsRef.current = updated;
+    editingIdxRef.current = idx;
+    setPlots(updated);
+    setEditingIdx(idx);
+    const summary = [
+      `plot ${updated[idx].plotNo}`,
+      patch.status,
+      patch.sellableSqYrd != null ? `${patch.sellableSqYrd} sq yd` : '',
+      patch.totalPlc != null ? `PLC ${patch.totalPlc}` : '',
+      patch.totalCost != null ? `cost ${patch.totalCost}` : '',
+      patch.otmc != null ? `OTMC ${patch.otmc}` : '',
+      patch.gstOnOtherCharges != null ? `GST ${patch.gstOnOtherCharges}` : '',
+      patch.dimensions || ''
+    ].filter(Boolean).join(', ');
+    setMicNote(`Updated ${summary}. Still listening — tap Stop when you are done.`);
+  };
 
   const startMic = () => {
+    if (listeningRef.current) {
+      listeningRef.current = false;
+      recognitionRef.current?.stop();
+      setListening(false);
+      setMicNote('Stopped.');
+      return;
+    }
     const SpeechApi = (window as unknown as {
       SpeechRecognition?: new () => SpeechRec;
       webkitSpeechRecognition?: new () => SpeechRec;
@@ -185,32 +284,51 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
       setMicNote('Microphone is not supported in this browser. Use Chrome or Edge.');
       return;
     }
-    if (editingIdx === null) {
-      setMicNote('Select a plot row, then use the microphone.');
-      return;
-    }
     recognitionRef.current?.stop();
     const recognition = new SpeechApi();
     recognition.lang = 'en-IN';
-    recognition.interimResults = false;
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    let carried = '';
+    let latestFinals = '';
     recognition.onresult = (event) => {
-      const said = String(event.results?.[0]?.[0]?.transcript || '').trim();
-      const plotNo = said.replace(/^plot\s*/i, '').replace(/\s+/g, '');
-      if (!plotNo) {
-        setMicNote('Did not catch a plot number.');
+      const results = event.results;
+      if (!results) return;
+      const finals: string[] = [];
+      let interim = '';
+      for (let i = 0; i < results.length; i += 1) {
+        const piece = String(results[i]?.[0]?.transcript || '').trim();
+        if (!piece) continue;
+        if (results[i].isFinal) finals.push(piece);
+        else interim = piece;
+      }
+      latestFinals = finals.join(' ').trim();
+      const said = [carried, latestFinals].filter(Boolean).join(' ').trim();
+      if (said) applySpoken(said);
+      else if (interim) setMicNote(`Hearing “${interim}”… keep going.`);
+    };
+    recognition.onerror = (event) => {
+      const code = event?.error || '';
+      if (code === 'no-speech' || code === 'aborted') return;
+      listeningRef.current = false;
+      setListening(false);
+      setMicNote('Could not hear that. Tap Mic and try again.');
+    };
+    recognition.onend = () => {
+      if (latestFinals) {
+        carried = [carried, latestFinals].filter(Boolean).join(' ').trim();
+        latestFinals = '';
+      }
+      if (listeningRef.current) {
+        try { recognition.start(); } catch { /* already running */ }
         return;
       }
-      handleFieldChange(editingIdx, 'plotNo', plotNo);
-      setMicNote(`Heard “${said}”.`);
-    };
-    recognition.onerror = () => {
       setListening(false);
-      setMicNote('Could not hear that. Try again.');
     };
-    recognition.onend = () => setListening(false);
     recognitionRef.current = recognition;
+    listeningRef.current = true;
     setListening(true);
-    setMicNote('Listening… say the plot number.');
+    setMicNote('Listening… say every field in one go, for example “plot 32, status sold, square yard 120, plc 200, cost 500, gst 50, dimension 30 by 80”. Tap Stop when finished.');
     recognition.start();
   };
 
@@ -250,7 +368,23 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
   const handleFieldChange = (index: number, field: keyof ExtractedPlot, value: any) => {
     const updated = [...plots];
     updated[index] = { ...updated[index], [field]: value };
+    if (field === 'plotNo') updated[index].numberNotPrinted = false;
+    plotsRef.current = updated;
     setPlots(updated);
+  };
+
+  const removePlot = (index: number) => {
+    const updated = plotsRef.current.filter((_, i) => i !== index);
+    plotsRef.current = updated;
+    setPlots(updated);
+    setEditingIdx((current) => {
+      if (current === null) return null;
+      if (current === index) return null;
+      if (current > index) return current - 1;
+      return current;
+    });
+    const removed = plots[index];
+    setMicNote(`Removed ${[removed?.block, removed?.plotNo].filter(Boolean).join('-') || 'that plot'}.`);
   };
 
   const handleApprove = async () => {
@@ -486,9 +620,9 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${listening ? 'bg-[#0B4F3C] text-white border-[#0B4F3C]' : 'bg-white text-[#0B4F3C] border-[#0B4F3C]/20'}`}
                 >
                   <Mic className="w-3 h-3" />
-                  {listening ? 'Listening…' : 'Mic'}
+                  {listening ? 'Stop' : 'Mic'}
                 </button>
-                <span className="text-[10px] text-[#171A18]/50 font-semibold">Click a row, then speak the plot number</span>
+                <span className="text-[10px] text-[#171A18]/50 font-semibold">Say every field, then tap Stop</span>
               </div>
             </div>
             {(orderNotes.length > 0 || micNote) && (
@@ -529,6 +663,11 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                         </td>
                         <td className="px-3 py-2.5">
                           <span className="font-bold text-[#0B4F3C] font-mono">{p.plotNo}</span>
+                          {p.numberNotPrinted && (
+                            <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded border bg-red-50 text-red-700 border-red-200 whitespace-nowrap">
+                              not on map
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-2.5">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${STATUS_COLORS[p.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
@@ -559,12 +698,26 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-center">
-                          <button className="text-[#0B4F3C] hover:text-[#063B2D]">
-                            {editingIdx === idx
-                              ? <ChevronUp className="w-3.5 h-3.5" />
-                              : <ChevronDown className="w-3.5 h-3.5" />
-                            }
-                          </button>
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <button type="button" className="text-[#0B4F3C] hover:text-[#063B2D]" aria-label={`Edit plot ${p.plotNo}`}>
+                              {editingIdx === idx
+                                ? <ChevronUp className="w-3.5 h-3.5" />
+                                : <ChevronDown className="w-3.5 h-3.5" />
+                              }
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Remove plot ${p.plotNo}`}
+                              title="Remove this plot"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removePlot(idx);
+                              }}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
 
@@ -659,6 +812,16 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                                   onChange={(e) => handleFieldChange(idx, 'gstOnOtherCharges', parseFloat(e.target.value) || 0)}
                                   className="w-full bg-white border border-[#0B4F3C]/20 rounded-lg px-2 py-1.5 text-[#171A18] font-bold text-xs focus:outline-none focus:border-[#0B4F3C]"
                                 />
+                              </div>
+                              <div className="col-span-2 sm:col-span-4 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => removePlot(idx)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-red-700 border border-red-200 bg-white hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Remove this plot
+                                </button>
                               </div>
                             </div>
                           </td>

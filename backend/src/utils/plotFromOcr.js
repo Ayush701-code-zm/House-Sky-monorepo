@@ -123,6 +123,10 @@ function mergeExtractedPlots(plots) {
       );
       if (sizeClose && size < 300 && dx < 4 && dy < 1.05) return true;
       if (sizeClose && size >= 300 && dx < 8 && dy < 2) return true;
+      // The same printed number in one block, sitting on the overlap between two scan tiles.
+      const sameNo = cleanText(existing.plotNo).toUpperCase() === cleanText(plot.plotNo).toUpperCase();
+      const sameBlock = inferBlock(existing) === inferBlock(plot);
+      if (sameNo && sameBlock && cleanText(plot.plotNo) && dx < 10 && dy < 8) return true;
       return false;
     });
     if (duplicateIndex === -1) {
@@ -130,7 +134,14 @@ function mergeExtractedPlots(plots) {
       return;
     }
     const current = unique[duplicateIndex];
-    const richer = size > plotArea(current) ? plot : current;
+    const currentPrinted = isPrintedPlotNo(current);
+    const plotPrinted = isPrintedPlotNo(plot);
+    let richer;
+    if (currentPrinted !== plotPrinted) richer = plotPrinted ? plot : current;
+    else richer = size > plotArea(current) ? plot : current;
+    if (!richer.boxPercent && (current.boxPercent || plot.boxPercent)) {
+      richer = { ...richer, boxPercent: current.boxPercent || plot.boxPercent };
+    }
     if (current.status === 'SOLD' || plot.status === 'SOLD') {
       unique[duplicateIndex] = { ...richer, status: 'SOLD' };
       return;
@@ -171,7 +182,10 @@ function assignStablePlotNumbers(plots) {
 
   return plots.map((plot) => {
     const block = inferBlock(plot);
-    if (isPrintedPlotNo(plot)) {
+    if (isPrintedPlotNo(plot) && !plot.numberNotPrinted) {
+      return { ...plot, block, plotNo: cleanText(plot.plotNo) };
+    }
+    if (plot.numberNotPrinted && cleanText(plot.plotNo)) {
       return { ...plot, block, plotNo: cleanText(plot.plotNo) };
     }
     counters[block] = counters[block] || 0;
@@ -181,7 +195,43 @@ function assignStablePlotNumbers(plots) {
       nextNo = `${block}-${String(counters[block]).padStart(2, '0')}`;
     } while (used.has(nextNo.toUpperCase()));
     used.add(nextNo.toUpperCase());
-    return { ...plot, block, plotNo: nextNo };
+    return { ...plot, block, plotNo: nextNo, numberNotPrinted: true };
+  });
+}
+
+function plotBoxOrMarker(plot) {
+  const box = plot.boxPercent;
+  if (box && Number.isFinite(Number(box.widthPercent)) && Number(box.widthPercent) > 0) {
+    return {
+      x0: Number(box.xPercent),
+      y0: Number(box.yPercent),
+      x1: Number(box.xPercent) + Number(box.widthPercent),
+      y1: Number(box.yPercent) + Number(box.heightPercent)
+    };
+  }
+  const x = percentOrNull(plot.marker?.xPercent);
+  const y = percentOrNull(plot.marker?.yPercent);
+  if (x === null || y === null) return null;
+  return { x0: x - 1.5, y0: y - 1.5, x1: x + 1.5, y1: y + 1.5 };
+}
+
+/**
+ * A box with no readable number that sits on top of a numbered plot is a fragment of that plot
+ * (cut at a scan-tile edge, or read twice), not a separate plot.
+ */
+function dropUnnumberedFragments(plots) {
+  const numbered = plots.filter(isPrintedPlotNo).map(plotBoxOrMarker).filter(Boolean);
+  if (!numbered.length) return plots;
+  return plots.filter((plot) => {
+    if (isPrintedPlotNo(plot)) return true;
+    const own = plotBoxOrMarker(plot);
+    if (!own) return false;
+    const cx = (own.x0 + own.x1) / 2;
+    const cy = (own.y0 + own.y1) / 2;
+    const pad = 0.8;
+    return !numbered.some((box) => (
+      cx >= box.x0 - pad && cx <= box.x1 + pad && cy >= box.y0 - pad && cy <= box.y1 + pad
+    ));
   });
 }
 
@@ -218,7 +268,7 @@ function finalizeExtractedPlots(plots, options = {}) {
     };
   });
   // Re-merging already reviewed rows (approve step) would silently drop plots the admin kept.
-  const merged = (options.merge === false ? prepared : mergeExtractedPlots(prepared))
+  const merged = (options.merge === false ? prepared : dropUnnumberedFragments(mergeExtractedPlots(prepared)))
     .filter((plot) => plotArea(plot) > 0);
   return sortPlotsInSequence(assignStablePlotNumbers(merged));
 }
