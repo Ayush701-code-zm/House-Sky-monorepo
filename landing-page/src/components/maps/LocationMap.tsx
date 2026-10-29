@@ -84,12 +84,6 @@ export function LocationMap({ latitude, longitude, title, className = '', zoom =
       if (title) marker.bindPopup(title)
 
       mapRef.current = map
-      map.on('zoomend', () => {
-        const center = map.getCenter()
-        // #region agent log
-        fetch('http://127.0.0.1:7420/ingest/0655f98e-3729-4804-b6a0-f784ef6ed12a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e67702'},body:JSON.stringify({sessionId:'e67702',location:'LocationMap.tsx:zoomend',message:'map zoom ended',data:{zoom:map.getZoom(),maxZoom:map.getMaxZoom(),basemap:basemapRef.current,lat:Number(center.lat.toFixed(5)),lng:Number(center.lng.toFixed(5)),pinLat:latitude,pinLng:longitude},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'})}).catch(()=>{});
-        // #endregion
-      })
       timer = window.setTimeout(() => map.invalidateSize(), 100)
     })
 
@@ -116,9 +110,6 @@ export function LocationMap({ latitude, longitude, title, className = '', zoom =
       if (map.hasLayer(layers.satellite)) map.removeLayer(layers.satellite)
       if (!map.hasLayer(layers.street)) layers.street.addTo(map)
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7420/ingest/0655f98e-3729-4804-b6a0-f784ef6ed12a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e67702'},body:JSON.stringify({sessionId:'e67702',location:'LocationMap.tsx:basemap',message:'basemap zoom cap',data:{basemap,zoom:map.getZoom(),maxZoom:map.getMaxZoom(),cap},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'})}).catch(()=>{});
-    // #endregion
   }, [basemap])
 
   return (

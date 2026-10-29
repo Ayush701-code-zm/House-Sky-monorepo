@@ -73,9 +73,4 @@ server.requestTimeout = 600000;
 server.keepAliveTimeout = 610000;
 server.headersTimeout = 620000;
 
-// #region agent log
-process.on('uncaughtException', (err) => { try { require('fs').appendFileSync('/Users/ayushanand/Developer/Autoroma-perume/.cursor/debug-e67702.log', JSON.stringify({ sessionId: 'e67702', runId: 'ocr-local-1', hypothesisId: 'C', location: 'server.js:uncaughtException', message: 'process crash', data: { error: String(err && err.stack).slice(0, 600) }, timestamp: Date.now() }) + '\n'); } catch (_) {} process.exit(1); });
-process.on('unhandledRejection', (err) => { try { require('fs').appendFileSync('/Users/ayushanand/Developer/Autoroma-perume/.cursor/debug-e67702.log', JSON.stringify({ sessionId: 'e67702', runId: 'ocr-local-1', hypothesisId: 'C', location: 'server.js:unhandledRejection', message: 'unhandled rejection', data: { error: String(err && (err.stack || err)).slice(0, 600) }, timestamp: Date.now() }) + '\n'); } catch (_) {} });
-// #endregion
-
 module.exports = app;

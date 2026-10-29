@@ -73,14 +73,7 @@ exports.approveMapOverlay = async (req, res, next) => {
       { merge: false }
     );
 
-    // #region agent log
-    const __dbg = (hypothesisId, message, data) => { try { require('fs').appendFileSync('/Users/ayushanand/Developer/Autoroma-perume/.cursor/debug-e67702.log', JSON.stringify({ sessionId: 'e67702', runId: 'approve-post-fix', hypothesisId, location: 'ocrController.js:approveMapOverlay', message, data, timestamp: Date.now() }) + '\n'); } catch (_) {} };
-    __dbg('F', 'approve input', { mapId, reviewed, rawCount: rawPlots.length, normalizedCount: normalizedPlots.length, droppedByNormalize: rawPlots.length - normalizedPlots.length, sampleRaw: rawPlots.slice(0, 3).map((p) => ({ plotNo: p.plotNo, block: p.block, sellableSqYrd: p.sellableSqYrd, hasMarker: Boolean(p.marker || p.markerXPercent) })) });
-    // #endregion
     if (normalizedPlots.length === 0) {
-      // #region agent log
-      __dbg('F', '422 no readable plots', { rawCount: rawPlots.length });
-      // #endregion
       return res.status(422).json({ message: 'No readable plots to approve. Re-upload a clearer naksha.' });
     }
 
@@ -96,9 +89,6 @@ exports.approveMapOverlay = async (req, res, next) => {
         if (seen.has(key)) duplicates.set(key, plotLabel(plot));
         seen.add(key);
       });
-      // #region agent log
-      __dbg('G', 'duplicate check (block+plotNo)', { duplicates: Array.from(duplicates.values()), dupDetails: normalizedPlots.filter((p) => duplicates.has(plotKey(p))).map((p) => ({ plotNo: p.plotNo, block: p.block, sellableSqYrd: p.sellableSqYrd, x: p.marker && p.marker.xPercent, y: p.marker && p.marker.yPercent })) });
-      // #endregion
       if (duplicates.size) {
         return res.status(422).json({
           message: `Duplicate plots in the same block: ${Array.from(duplicates.values()).join(', ')}. Fix the block or plot number of these rows before saving.`
@@ -172,9 +162,6 @@ exports.approveMapOverlay = async (req, res, next) => {
       _id: { $nin: keptPlotIds }
     });
 
-    // #region agent log
-    __dbg('G', 'approve saved', { plotCount: keptPlotIds.length });
-    // #endregion
     res.json({
       message: 'Naksha approved. Plot inventory synced from AI extraction.',
       plotCount: keptPlotIds.length,
