@@ -19,6 +19,9 @@ export const EmployeesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [approveFor, setApproveFor] = useState<Employee | null>(null);
+  const [sponsorId, setSponsorId] = useState('');
+  const [approving, setApproving] = useState(false);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -47,15 +50,35 @@ export const EmployeesPage: React.FC = () => {
     }
   };
 
-  const handleApproveAgent = async (e: React.MouseEvent, id: string) => {
+  const employeeKey = (emp: Employee) => String(emp.id || (emp as any)._id || '');
+
+  const openApprove = (e: React.MouseEvent, emp: Employee) => {
     e.stopPropagation();
+    const parent = emp.parentId;
+    const current = parent && typeof parent === 'object'
+      ? String((parent as any)._id || (parent as any).id || '')
+      : String(parent || '');
+    setSponsorId(current);
+    setApproveFor(emp);
+  };
+
+  const confirmApprove = async () => {
+    if (!approveFor) return;
+    if (!sponsorId) {
+      toast.error('Choose a sponsoring agent');
+      return;
+    }
     try {
-      const res = await api.post(`/employees/${id}/approve`);
+      setApproving(true);
+      const res = await api.post(`/employees/${employeeKey(approveFor)}/approve`, { parentId: sponsorId });
       toast.success(res.data.message || 'Agent approved and activated!');
+      setApproveFor(null);
       fetchEmployees();
     } catch (error: any) {
       console.error(error);
-      toast.error(error?.friendlyMessage || 'Failed to approve agent');
+      toast.error(error?.friendlyMessage || error?.response?.data?.message || 'Failed to approve agent');
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -293,7 +316,7 @@ export const EmployeesPage: React.FC = () => {
                   <th className="p-3">Code</th>
                   <th className="p-3">Full Name</th>
                   <th className="p-3">Phone & Email</th>
-                  <th className="p-3">Sponsor Upline</th>
+                  <th className="p-3">Sponsorship</th>
                   <th className="p-3">Current Rank</th>
                   <th className="p-3">Approval Status</th>
                   <th className="p-3">Self Sales</th>
@@ -328,7 +351,9 @@ export const EmployeesPage: React.FC = () => {
                           <p className="font-semibold text-[#171A18] text-[11px]">
                             {emp.parentId && typeof emp.parentId === 'object' && (emp.parentId as any).userId
                               ? (emp.parentId as any).userId.fullName
-                              : 'Root / Top Admin'}
+                              : isPending
+                              ? 'Sponsorship missing'
+                              : 'Top of network'}
                           </p>
                           <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-[#E8F0EC] text-[#0B4F3C] border border-[#0B4F3C]/30">
                             Leg #{emp.legNumber || 1}
@@ -360,7 +385,7 @@ export const EmployeesPage: React.FC = () => {
                         {isPending ? (
                           <>
                             <button
-                              onClick={(e) => handleApproveAgent(e, emp.id)}
+                              onClick={(e) => openApprove(e, emp)}
                               className="px-3 py-1.5 rounded-lg bg-[#0B4F3C] hover:bg-[#063B2D] text-white text-xs font-bold shadow-md cursor-pointer inline-flex items-center gap-1 border border-[#0B4F3C]"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" /> Approve Agent
@@ -423,6 +448,39 @@ export const EmployeesPage: React.FC = () => {
       )}
 
       {/* Agent Performance Dossier & Promotion Modal */}
+      {approveFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white border border-[#0B4F3C]/20 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-serif font-bold text-[#171A18]">Sponsorship</h3>
+            <p className="text-xs text-[#171A18]/70">
+              Choose who sponsors {approveFor.userId?.fullName || 'this agent'} before the account is activated.
+              {approveFor.parentId ? ' Their invite sponsor is already selected and can be changed.' : ''}
+            </p>
+            <label className="text-[#171A18]/70 font-semibold block text-xs">Sponsorship</label>
+            <select
+              value={sponsorId}
+              onChange={(e) => setSponsorId(e.target.value)}
+              className="w-full bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]"
+            >
+              <option value="">Select a sponsoring agent</option>
+              {employees
+                .filter((emp) => employeeKey(emp) && employeeKey(emp) !== employeeKey(approveFor))
+                .map((emp) => (
+                  <option key={employeeKey(emp)} value={employeeKey(emp)}>
+                    {emp.userId?.fullName || emp.employeeCode} ({emp.employeeCode})
+                  </option>
+                ))}
+            </select>
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setApproveFor(null)} className="px-4 py-2.5 rounded-xl border border-[#0B4F3C]/20 text-xs font-bold cursor-pointer">Cancel</button>
+              <button type="button" disabled={approving || !sponsorId} onClick={confirmApprove} className="px-5 py-2.5 rounded-xl bg-[#0B4F3C] text-white text-xs font-bold disabled:opacity-60 cursor-pointer">
+                {approving ? 'Approving…' : 'Approve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedAgentId && (
         <AgentProfileModal
           employeeId={selectedAgentId}

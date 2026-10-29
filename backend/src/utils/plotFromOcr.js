@@ -185,6 +185,24 @@ function assignStablePlotNumbers(plots) {
   });
 }
 
+function plotSequenceKey(plot) {
+  const block = cleanText(plot.block).toUpperCase();
+  const raw = cleanText(plot.plotNo).toUpperCase();
+  const match = raw.match(/(\d+)/);
+  const num = match ? parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
+  return { block, num, raw };
+}
+
+function sortPlotsInSequence(plots) {
+  return [...plots].sort((a, b) => {
+    const ka = plotSequenceKey(a);
+    const kb = plotSequenceKey(b);
+    if (ka.block !== kb.block) return ka.block.localeCompare(kb.block);
+    if (ka.num !== kb.num) return ka.num - kb.num;
+    return ka.raw.localeCompare(kb.raw);
+  });
+}
+
 function finalizeExtractedPlots(plots, options = {}) {
   const prepared = (plots || []).map((plot) => {
     const sellableSqYrd = sanitizeSellableArea(plot.sellableSqYrd, plot.label || plot.plotNo);
@@ -202,7 +220,7 @@ function finalizeExtractedPlots(plots, options = {}) {
   // Re-merging already reviewed rows (approve step) would silently drop plots the admin kept.
   const merged = (options.merge === false ? prepared : mergeExtractedPlots(prepared))
     .filter((plot) => plotArea(plot) > 0);
-  return assignStablePlotNumbers(merged);
+  return sortPlotsInSequence(assignStablePlotNumbers(merged));
 }
 
 function parseDimensions(raw) {

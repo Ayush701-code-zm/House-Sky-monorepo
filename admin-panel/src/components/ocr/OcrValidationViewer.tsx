@@ -6,7 +6,8 @@ import {
   FileSpreadsheet,
   ZoomIn,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mic
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -92,6 +93,63 @@ interface OcrValidationViewerProps {
   onComplete: () => void;
 }
 
+function plotOrder(a: ExtractedPlot, b: ExtractedPlot) {
+  const blockA = (a.block || '').toUpperCase();
+  const blockB = (b.block || '').toUpperCase();
+  if (blockA !== blockB) return blockA.localeCompare(blockB);
+  const num = (plot: ExtractedPlot) => {
+    const match = String(plot.plotNo || '').match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
+  };
+  const na = num(a);
+  const nb = num(b);
+  if (na !== nb) return na - nb;
+  return String(a.plotNo || '').localeCompare(String(b.plotNo || ''));
+}
+
+function sequenceNotes(rows: ExtractedPlot[]): string[] {
+  const notes: string[] = [];
+  const seen = new Set<string>();
+  const dupes: string[] = [];
+  const groups = new Map<string, number[]>();
+  rows.forEach((plot) => {
+    const label = [plot.block, plot.plotNo].filter(Boolean).join('-') || plot.plotNo || 'blank';
+    const key = label.toUpperCase();
+    if (seen.has(key)) dupes.push(label);
+    seen.add(key);
+    const match = String(plot.plotNo || '').match(/(\d+)/);
+    if (!match) return;
+    const block = (plot.block || '—').toUpperCase();
+    const list = groups.get(block) || [];
+    list.push(parseInt(match[1], 10));
+    groups.set(block, list);
+  });
+  if (dupes.length) notes.push(`Duplicate plot numbers: ${Array.from(new Set(dupes)).join(', ')}`);
+  groups.forEach((nums, block) => {
+    const unique = Array.from(new Set(nums)).sort((a, b) => a - b);
+    const gaps: string[] = [];
+    for (let i = 1; i < unique.length; i += 1) {
+      if (unique[i] - unique[i - 1] > 1) {
+        const from = unique[i - 1] + 1;
+        const to = unique[i] - 1;
+        gaps.push(from === to ? String(from) : `${from}–${to}`);
+      }
+    }
+    if (gaps.length) notes.push(`Block ${block} is missing ${gaps.join(', ')}`);
+  });
+  return notes;
+}
+
+type SpeechRec = {
+  lang: string;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: (event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void;
+  onerror: () => void;
+  onend: () => void;
+};
+
 const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   BOOKED: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -105,12 +163,56 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
   onComplete
 }) => {
   const toast = useToast();
-  const [plots, setPlots] = useState<ExtractedPlot[]>(mapData.extractedPlots);
+  const [plots, setPlots] = useState<ExtractedPlot[]>(() => [...mapData.extractedPlots].sort(plotOrder));
   const [isProcessing, setIsProcessing] = useState(false);
   const [imageZoomed, setImageZoomed] = useState(false);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [contentBox, setContentBox] = useState<ContentBox | null>(null);
+  const [listening, setListening] = useState(false);
+  const [micNote, setMicNote] = useState('');
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const orderNotes = sequenceNotes(plots);
+
+  useEffect(() => () => recognitionRef.current?.stop(), []);
+
+  const startMic = () => {
+    const SpeechApi = (window as unknown as {
+      SpeechRecognition?: new () => SpeechRec;
+      webkitSpeechRecognition?: new () => SpeechRec;
+    }).SpeechRecognition || (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition;
+    if (!SpeechApi) {
+      setMicNote('Microphone is not supported in this browser. Use Chrome or Edge.');
+      return;
+    }
+    if (editingIdx === null) {
+      setMicNote('Select a plot row, then use the microphone.');
+      return;
+    }
+    recognitionRef.current?.stop();
+    const recognition = new SpeechApi();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const said = String(event.results?.[0]?.[0]?.transcript || '').trim();
+      const plotNo = said.replace(/^plot\s*/i, '').replace(/\s+/g, '');
+      if (!plotNo) {
+        setMicNote('Did not catch a plot number.');
+        return;
+      }
+      handleFieldChange(editingIdx, 'plotNo', plotNo);
+      setMicNote(`Heard “${said}”.`);
+    };
+    recognition.onerror = () => {
+      setListening(false);
+      setMicNote('Could not hear that. Try again.');
+    };
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    setListening(true);
+    setMicNote('Listening… say the plot number.');
+    recognition.start();
+  };
 
   // The <img> uses object-contain, so the picture is letterboxed inside its element box.
   // Overlay coordinates are % of the picture itself, so position the overlay layer over
@@ -284,7 +386,7 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                           <div
                             key={idx}
                             {...common}
-                            className="absolute box-border pointer-events-auto cursor-pointer"
+                            className="absolute box-border pointer-events-auto cursor-pointer flex items-center justify-center overflow-hidden"
                             style={{
                               left: `${geometry.left}%`,
                               top: `${geometry.top}%`,
@@ -294,7 +396,11 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
                               backgroundColor: `${color}${selected ? '55' : '26'}`,
                               zIndex: selected ? 2 : 1
                             }}
-                          />
+                          >
+                            <span className="pointer-events-none px-0.5 text-[10px] font-extrabold leading-none text-[#171A18] bg-white/95 rounded-sm">
+                              {p.plotNo}
+                            </span>
+                          </div>
                         );
                       }
                       return (
@@ -369,12 +475,30 @@ export const OcrValidationViewer: React.FC<OcrValidationViewerProps> = ({
         {/* RIGHT: Plot Table */}
         <div className="lg:col-span-8">
           <div className="bg-white rounded-2xl border border-[#0B4F3C]/15 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#0B4F3C]/10 flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#0B4F3C]/10 flex items-center justify-between gap-3">
               <h4 className="text-xs font-bold text-[#171A18] uppercase tracking-wider">
                 Extracted Plot Data
               </h4>
-              <span className="text-[10px] text-[#171A18]/50 font-semibold">Click a row to edit</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={startMic}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer ${listening ? 'bg-[#0B4F3C] text-white border-[#0B4F3C]' : 'bg-white text-[#0B4F3C] border-[#0B4F3C]/20'}`}
+                >
+                  <Mic className="w-3 h-3" />
+                  {listening ? 'Listening…' : 'Mic'}
+                </button>
+                <span className="text-[10px] text-[#171A18]/50 font-semibold">Click a row, then speak the plot number</span>
+              </div>
             </div>
+            {(orderNotes.length > 0 || micNote) && (
+              <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 space-y-1">
+                {orderNotes.map((note) => (
+                  <p key={note} className="text-[11px] font-semibold text-amber-900">{note}</p>
+                ))}
+                {micNote && <p className="text-[11px] font-semibold text-[#0B4F3C]">{micNote}</p>}
+              </div>
+            )}
 
             <div className="overflow-x-auto overflow-y-auto max-h-[480px]">
               <table className="w-full text-xs">

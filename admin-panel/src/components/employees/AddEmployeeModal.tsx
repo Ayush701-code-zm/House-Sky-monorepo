@@ -171,11 +171,11 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ onClose, onS
             {/* MLM Hierarchy & Placement Leg */}
             <div className="border-t border-[#0B4F3C]/15 pt-3 space-y-2">
               <label className="text-[#0B4F3C] font-bold flex items-center gap-1.5 text-[11px]">
-                <GitMerge className="w-3.5 h-3.5 text-[#0B4F3C]" /> MLM Network Sponsor &amp; Leg Placement
+                <GitMerge className="w-3.5 h-3.5 text-[#0B4F3C]" /> Sponsorship &amp; leg placement
               </label>
 
                 <div>
-                  <label className="text-[#171A18]/70 font-semibold block mb-1">Sponsor / Parent Agent</label>
+                  <label className="text-[#171A18]/70 font-semibold block mb-1">Sponsorship</label>
                   <select
                     value={parentId}
                     onChange={(e) => setParentId(e.target.value)}

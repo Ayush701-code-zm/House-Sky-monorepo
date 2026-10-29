@@ -215,13 +215,13 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="text-[#171A18]/70 font-semibold">Sponsor Upline Agent</label>
+              <label className="text-[#171A18]/70 font-semibold">Sponsorship</label>
               <select
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
                 className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]"
               >
-                <option value="">Root / CEO (No Sponsor Upline)</option>
+                <option value="">No sponsorship (top of network)</option>
                 {allEmployees
                   .filter((emp) => emp.id !== employeeId)
                   .map((emp) => (

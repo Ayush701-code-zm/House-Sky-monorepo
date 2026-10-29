@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import AreaUnitField from '../components/common/AreaUnitField';
+import { formatAreaSize, parseAreaSize, sqftToUnit, unitToSqft, unitTypeFor } from '../utils/areaUnits';
 import {
   Flame,
   Plus,
@@ -793,16 +795,21 @@ export const BulkDealsPage: React.FC = () => {
                       className="w-full px-3 py-1.5 bg-neutral-950 border border-white/15 rounded-lg text-white font-medium focus:border-emerald-400"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">Total Area</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 6100 SQYD"
-                      value={formData.areaSize}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, areaSize: e.target.value }))}
-                      className="w-full px-3 py-1.5 bg-neutral-950 border border-white/15 rounded-lg text-white font-medium focus:border-emerald-400"
-                    />
-                  </div>
+                  <AreaUnitField
+                    sqft={(() => {
+                      const parsed = parseAreaSize(formData.areaSize);
+                      return parsed ? unitToSqft(parsed.value, parsed.unit) : 0;
+                    })()}
+                    initialUnit={parseAreaSize(formData.areaSize)?.unit || 'gaj'}
+                    showSavedHint={false}
+                    variant="dark"
+                    label="Total area"
+                    onSqftChange={(sqft, unit) => setFormData((prev) => ({
+                      ...prev,
+                      areaSize: sqft ? formatAreaSize(sqftToUnit(sqft, unit), unit) : '',
+                      unitType: unitTypeFor(unit),
+                    }))}
+                  />
                   <div>
                     <label className="text-[10px] font-bold text-neutral-400 uppercase block mb-1">Road Width</label>
                     <input
@@ -855,6 +862,7 @@ export const BulkDealsPage: React.FC = () => {
                       onChange={(e) => setFormData((prev) => ({ ...prev, unitType: e.target.value }))}
                       className="w-full px-3 py-1.5 bg-neutral-950 border border-white/15 rounded-lg text-white font-medium focus:border-emerald-400"
                     >
+                      <option value="GAJ">GAJ</option>
                       <option value="SQYD">SQYD</option>
                       <option value="SQMT">SQMT</option>
                       <option value="SQFT">SQFT</option>

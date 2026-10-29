@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Home, X } from 'lucide-react';
 import { Project } from '../../types';
 import { createProperty } from '../../services/propertiesService';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { clearDraft, readDraft, writeDraft } from '../../utils/formDraft';
 import { emptyPropertyForm, formToPayload, PropertyForm, PropertyFormValues } from './PropertyForm';
+
+const DRAFT_KEY = 'hs-admin-property-draft-new';
 
 interface AddPropertyModalProps {
   onClose: () => void;
@@ -13,9 +16,19 @@ interface AddPropertyModalProps {
 
 export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({ onClose, onSuccess }) => {
   const toast = useToast();
-  const [form, setForm] = useState<PropertyFormValues>(emptyPropertyForm());
+  const savedDraft = readDraft<PropertyFormValues>(DRAFT_KEY);
+  const skipDraft = useRef(false);
+  const [form, setForm] = useState<PropertyFormValues>(() => (
+    savedDraft ? { ...emptyPropertyForm(), ...savedDraft } : emptyPropertyForm()
+  ));
+  const [draftRestored, setDraftRestored] = useState(Boolean(savedDraft?.title || savedDraft?.city || savedDraft?.areaSqft));
   const [projects, setProjects] = useState<Project[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (skipDraft.current) return;
+    writeDraft(DRAFT_KEY, form);
+  }, [form]);
 
   useEffect(() => {
     api.get('/projects')
@@ -32,6 +45,8 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({ onClose, onS
     try {
       setIsSubmitting(true);
       await createProperty(formToPayload(form));
+      skipDraft.current = true;
+      clearDraft(DRAFT_KEY);
       toast.success('Property created and published');
       onSuccess();
       onClose();
@@ -59,6 +74,25 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({ onClose, onS
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {draftRestored && (
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-[#E8F0EC] px-3 py-2 text-xs text-[#0B4F3C]">
+            <span className="font-semibold">Restored the details from when this window was closed.</span>
+            <button
+              type="button"
+              className="font-bold underline cursor-pointer"
+              onClick={() => {
+                skipDraft.current = true;
+                clearDraft(DRAFT_KEY);
+                setForm(emptyPropertyForm());
+                setDraftRestored(false);
+                skipDraft.current = false;
+              }}
+            >
+              Discard draft
+            </button>
+          </div>
+        )}
 
         <PropertyForm value={form} onChange={setForm} projects={projects} />
 

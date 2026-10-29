@@ -10,10 +10,8 @@ const DOT_RED = '#EF4444';
 const PERCENT_MIN = 0;
 const PERCENT_MAX = 100;
 
-function statusBlockClass(status: string): string {
-  if (status === 'SOLD') return 'bg-red-600/95 text-white border-red-200 shadow-red-900/30';
-  if (status === 'AVAILABLE') return 'bg-emerald-600/95 text-white border-emerald-200 shadow-emerald-900/30';
-  return 'bg-amber-500/95 text-white border-amber-200 shadow-amber-900/30';
+function statusBlockClass(_status: string): string {
+  return 'bg-white text-[#171A18] border-[#171A18]/30 shadow-black/20';
 }
 
 function statusDotColor(status: string): string {
@@ -381,11 +379,11 @@ export const PlotMapCanvas: React.FC<PlotMapCanvasProps> = ({
                     <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-xl shadow-lg border-2 border-white/90 text-[11px] font-extrabold font-mono tracking-tight whitespace-nowrap cursor-grab active:cursor-grabbing transition-all ${statusBlockClass(plot.status)}`}>
                       <span className="relative flex h-3 w-3 items-center justify-center shrink-0">
                         {plot.status === 'AVAILABLE' && (
-                          <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-white" />
+                          <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ backgroundColor: color }} />
                         )}
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-white border border-black/20 shadow-sm" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full border border-black/20 shadow-sm" style={{ backgroundColor: color }} />
                       </span>
-                      <span>{plot.plotNo}</span>
+                      <span className="text-[#171A18]">{plot.plotNo}</span>
                     </div>
                     {isHovered && (
                       <div className={`absolute top-1/2 -translate-y-1/2 w-56 bg-white rounded-xl shadow-xl border border-[#0B4F3C]/15 p-3 z-20 ${flipLeft ? 'right-5' : 'left-5'}`}>

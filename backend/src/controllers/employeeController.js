@@ -278,6 +278,23 @@ exports.approveAgent = async (req, res, next) => {
     const user = await User.findById(employee.userId);
     if (!user) return res.status(404).json({ message: 'User record not found' });
 
+    const parentId = req.body?.parentId || employee.parentId;
+    if (!parentId) {
+      return res.status(400).json({ message: 'Choose a sponsoring agent before approving' });
+    }
+    if (parentId.toString() === employee._id.toString()) {
+      return res.status(400).json({ message: 'An agent cannot be their own sponsor' });
+    }
+    if (!(await Employee.exists({ _id: parentId }))) {
+      return res.status(400).json({ message: 'Selected sponsoring agent does not exist' });
+    }
+    const downlines = await getDownlineEmployeeIds(employee._id);
+    if (downlines.some((id) => id.toString() === parentId.toString())) {
+      return res.status(400).json({ message: 'Cannot place an agent under someone in their own downline' });
+    }
+    employee.parentId = parentId;
+    await employee.save();
+
     user.approvalStatus = 'APPROVED';
     user.isActive = true;
     await user.save();

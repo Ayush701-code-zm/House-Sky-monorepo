@@ -152,6 +152,8 @@ const EMPTY_FORM: FormState = {
   }
 }
 
+const LISTING_DRAFT_KEY = 'hs-public-list-property-draft'
+
 const WIZARD_STEPS = [
   { id: 1, name: 'Overview', icon: Home, short: 'Type & Purpose' },
   { id: 2, name: 'Location', icon: MapPin, short: 'Address & City' },
@@ -161,6 +163,23 @@ const WIZARD_STEPS = [
   { id: 6, name: 'KYC & Legal', icon: ShieldCheck, short: 'ID & Title Deed' },
   { id: 7, name: 'Review', icon: CheckCircle2, short: 'Final Submit' }
 ]
+
+function readListingDraft(): { form: FormState; step: number } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(LISTING_DRAFT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed?.form || typeof parsed.form !== 'object') return null
+    const step = Number(parsed.step)
+    return {
+      form: { ...EMPTY_FORM, ...parsed.form, kyc: { ...EMPTY_FORM.kyc, ...(parsed.form.kyc || {}) } },
+      step: step >= 1 && step <= WIZARD_STEPS.length ? step : 1,
+    }
+  } catch {
+    return null
+  }
+}
 
 // --- Auth Gate ---
 function AuthGate() {
@@ -371,8 +390,11 @@ function SingleDocUploader({
 export default function ListPropertyPage() {
   const router = useRouter()
   const { isAuthenticated, user, token } = useOwnerAuth()
+  const skipDraft = React.useRef(false)
+  const skipFirstSave = React.useRef(true)
   const [form, setForm] = React.useState<FormState>({ ...EMPTY_FORM })
   const [step, setStep] = React.useState<number>(1)
+  const [draftRestored, setDraftRestored] = React.useState(false)
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState('')
@@ -393,6 +415,28 @@ export default function ListPropertyPage() {
       }))
     }
   }, [user])
+
+  React.useEffect(() => {
+    const draft = readListingDraft()
+    if (draft && (draft.form.title || draft.form.city || draft.form.areaSqft || draft.step > 1)) {
+      setForm(draft.form)
+      setStep(draft.step)
+      setDraftRestored(true)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (skipFirstSave.current) {
+      skipFirstSave.current = false
+      return
+    }
+    if (skipDraft.current) return
+    try {
+      localStorage.setItem(LISTING_DRAFT_KEY, JSON.stringify({ form, step }))
+    } catch {
+      // A full browser store should not block the listing.
+    }
+  }, [form, step])
 
   if (!isAuthenticated) return <AuthGate />
   if (successRefId) return <SuccessScreen referenceId={successRefId} />
@@ -535,6 +579,8 @@ export default function ListPropertyPage() {
         return
       }
 
+      skipDraft.current = true
+      localStorage.removeItem(LISTING_DRAFT_KEY)
       setSuccessRefId(data.data?.referenceId || 'HS-PROP-SUCCESS')
     } catch {
       setSubmitError('Network connectivity error. Please check your connection and retry.')
@@ -620,7 +666,26 @@ export default function ListPropertyPage() {
           
           {/* Main Wizard Form Area */}
           <div className={`${showLivePreview ? 'lg:col-span-7' : 'lg:col-span-12'} space-y-6 transition-all duration-300`}>
-            
+            {draftRestored && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-brand-green/20 bg-brand-soft px-4 py-3 text-sm text-brand-charcoal">
+                <span className="font-semibold">Your last details are still here.</span>
+                <button
+                  type="button"
+                  className="font-bold text-brand-green underline"
+                  onClick={() => {
+                    skipDraft.current = true
+                    localStorage.removeItem(LISTING_DRAFT_KEY)
+                    setForm({ ...EMPTY_FORM })
+                    setStep(1)
+                    setDraftRestored(false)
+                    skipDraft.current = false
+                  }}
+                >
+                  Start over
+                </button>
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}

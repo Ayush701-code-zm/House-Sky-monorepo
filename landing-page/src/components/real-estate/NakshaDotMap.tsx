@@ -34,10 +34,8 @@ export function statusDotColor(status: string): string {
   return DOT_YELLOW
 }
 
-export function statusBlockClass(status: string): string {
-  if (status === 'SOLD') return 'bg-red-600/95 hover:bg-red-600 text-white border-red-200 shadow-red-900/30'
-  if (status === 'AVAILABLE') return 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-200 shadow-emerald-900/30'
-  return 'bg-amber-500/95 hover:bg-amber-500 text-white border-amber-200 shadow-amber-900/30'
+export function statusBlockClass(_status: string): string {
+  return 'bg-white text-[#171A18] border-[#171A18]/30 shadow-black/20'
 }
 
 export function statusBadgeClass(status: string): string {
@@ -303,11 +301,11 @@ export function NakshaDotMap({
             >
               <span className="relative flex h-3.5 w-3.5 items-center justify-center shrink-0">
                 {isAvailable && (
-                  <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-white" />
+                  <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ backgroundColor: statusDotColor(plot.status) }} />
                 )}
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white border border-black/20 shadow-sm" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full border border-black/20 shadow-sm" style={{ backgroundColor: statusDotColor(plot.status) }} />
               </span>
-              <span>{plot.plotNo}</span>
+              <span className="text-[#171A18]">{plot.plotNo}</span>
             </div>
           </button>
         )

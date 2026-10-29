@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { GalleryUploader } from '../common/GalleryUploader';
 import LocationMapPicker from '../common/LocationMapPicker';
+import AreaUnitField from '../common/AreaUnitField';
+import { gajFromSqft } from '../../utils/areaUnits';
 import { GalleryImage, ListingProperty, Project, PROPERTY_TYPES } from '../../types';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -389,13 +391,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ value, onChange, pro
           <label className={labelClass}>Dimensions</label>
           <input type="text" value={value.dimensions} onChange={(e) => patch({ dimensions: e.target.value })} placeholder="20x40" className={inputClass} />
         </div>
-        <div>
-          <label className={labelClass}>Area sq ft</label>
-          <input type="number" min={0} value={value.areaSqft} onChange={(e) => patch({ areaSqft: Number(e.target.value) })} className={inputClass} />
-        </div>
-        <div>
-          <label className={labelClass}>Area sq yd</label>
-          <input type="number" min={0} value={value.areaSqYrd} onChange={(e) => patch({ areaSqYrd: Number(e.target.value) })} className={inputClass} />
+        <div className="col-span-2">
+          <AreaUnitField
+            sqft={value.areaSqft}
+            onSqftChange={(sqft) => patch({ areaSqft: sqft, areaSqYrd: gajFromSqft(sqft) })}
+            label="Area"
+          />
         </div>
         <div>
           <label className={labelClass}>Bedrooms</label>

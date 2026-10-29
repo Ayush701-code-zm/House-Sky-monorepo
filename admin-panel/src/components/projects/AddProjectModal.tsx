@@ -18,6 +18,7 @@ import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { GalleryUploader } from '../common/GalleryUploader';
 import LocationMapPicker from '../common/LocationMapPicker';
+import AreaUnitField from '../common/AreaUnitField';
 import { GalleryImage } from '../../types';
 
 interface AddProjectModalProps {
@@ -400,16 +401,12 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-[#171A18]/70 font-semibold block mb-1">Total Area (sqft)</label>
-                <input
-                  type="number"
-                  required
-                  value={totalAreaSqft}
-                  onChange={(e) => setTotalAreaSqft(Number(e.target.value))}
-                  className="w-full bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]"
-                />
-              </div>
+              <AreaUnitField
+                sqft={totalAreaSqft}
+                onSqftChange={(next) => setTotalAreaSqft(next)}
+                label="Total area"
+                required
+              />
               <div>
                 <label className="text-[#171A18]/70 font-semibold block mb-1">Total Plots</label>
                 <input

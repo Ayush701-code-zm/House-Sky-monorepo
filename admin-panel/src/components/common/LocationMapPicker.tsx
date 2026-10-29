@@ -18,6 +18,10 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const INDIA_CENTER: [number, number] = [22.9734, 78.6569];
 const DEFAULT_ZOOM = 5;
 const PIN_ZOOM = 15;
+const STREET_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const SATELLITE_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const SATELLITE_MAX_ZOOM = 18;
+const STREET_MAX_ZOOM = 19;
 
 export type LatLngValue = {
   latitude: number | null;
@@ -50,6 +54,9 @@ export default function LocationMapPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const streetLayerRef = useRef<L.TileLayer | null>(null);
+  const satelliteLayerRef = useRef<L.TileLayer | null>(null);
+  const [basemap, setBasemap] = useState<'map' | 'satellite'>('map');
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -101,13 +108,19 @@ export default function LocationMapPicker({
     const map = L.map(containerRef.current, {
       center: hasPin ? [latitude!, longitude!] : INDIA_CENTER,
       zoom: hasPin ? PIN_ZOOM : DEFAULT_ZOOM,
+      maxZoom: STREET_MAX_ZOOM,
       scrollWheelZoom: true
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    streetLayerRef.current = L.tileLayer(STREET_TILES, {
       attribution: '&copy; OpenStreetMap',
-      maxZoom: 19
+      maxZoom: STREET_MAX_ZOOM
     }).addTo(map);
+    satelliteLayerRef.current = L.tileLayer(SATELLITE_TILES, {
+      attribution: 'Tiles &copy; Esri',
+      maxZoom: SATELLITE_MAX_ZOOM,
+      maxNativeZoom: SATELLITE_MAX_ZOOM
+    });
 
     map.on('click', (e: L.LeafletMouseEvent) => {
       setPin(e.latlng.lat, e.latlng.lng, false);
@@ -136,6 +149,8 @@ export default function LocationMapPicker({
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
+      streetLayerRef.current = null;
+      satelliteLayerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- init once; props synced below
   }, []);
@@ -163,6 +178,23 @@ export default function LocationMapPicker({
       map.setView([latitude, longitude], Math.max(map.getZoom(), PIN_ZOOM));
     }
   }, [latitude, longitude]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const street = streetLayerRef.current;
+    const satellite = satelliteLayerRef.current;
+    if (!map || !street || !satellite) return;
+    const cap = basemap === 'satellite' ? SATELLITE_MAX_ZOOM : STREET_MAX_ZOOM;
+    map.setMaxZoom(cap);
+    if (map.getZoom() > cap) map.setZoom(cap);
+    if (basemap === 'satellite') {
+      if (map.hasLayer(street)) map.removeLayer(street);
+      if (!map.hasLayer(satellite)) satellite.addTo(map);
+    } else {
+      if (map.hasLayer(satellite)) map.removeLayer(satellite);
+      if (!map.hasLayer(street)) street.addTo(map);
+    }
+  }, [basemap]);
 
   const runSearch = async () => {
     const q = search.trim();
@@ -233,11 +265,29 @@ export default function LocationMapPicker({
       {searchError && <p className="text-[11px] text-red-600 font-medium">{searchError}</p>}
       <p className="text-[10px] text-[#171A18]/50 font-medium">Click the map or drag the marker to set the pin. This location shows on the public website.</p>
 
-      <div
-        ref={containerRef}
-        className="w-full rounded-xl overflow-hidden border border-[#0B4F3C]/20 z-0"
-        style={{ height }}
-      />
+      <div className="relative">
+        <div className="absolute top-2 right-2 z-[500] flex overflow-hidden rounded-lg border border-[#0B4F3C]/20 bg-white shadow-md">
+          <button
+            type="button"
+            onClick={() => setBasemap('map')}
+            className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${basemap === 'map' ? 'bg-[#0B4F3C] text-white' : 'text-[#171A18]'}`}
+          >
+            Map
+          </button>
+          <button
+            type="button"
+            onClick={() => setBasemap('satellite')}
+            className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${basemap === 'satellite' ? 'bg-[#0B4F3C] text-white' : 'text-[#171A18]'}`}
+          >
+            Satellite
+          </button>
+        </div>
+        <div
+          ref={containerRef}
+          className="w-full rounded-xl overflow-hidden border border-[#0B4F3C]/20 z-0"
+          style={{ height }}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-[#171A18]/70">
         <div className="bg-[#FDFCF0] border border-[#0B4F3C]/10 rounded-lg px-2.5 py-1.5">
