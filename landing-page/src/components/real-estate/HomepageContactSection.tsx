@@ -15,20 +15,28 @@ import {
 } from 'lucide-react'
 import { getApiBaseUrl } from '@/utils/api'
 import { SITE } from '@/utils/siteConfig'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { useClientDraft } from '@/utils/useFormDraft'
+
+const HOME_CONTACT_DEFAULTS = {
+  fullName: '',
+  phone: '',
+  email: '',
+  projectOfInterest: 'Dholera SIR Smart City Enclave',
+  preferredDate: '',
+  message: '',
+}
 
 export function HomepageContactSection() {
+  const homeDraft = useClientDraft('hs-public-home-contact', HOME_CONTACT_DEFAULTS)
+  const formData = homeDraft.value
+  const setFormData = homeDraft.setValue
+  const draftRestored = homeDraft.restored
+  const setDraftRestored = homeDraft.setRestored
+  const clearHomeDraft = homeDraft.clear
   const [submitted, setSubmitted] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState('')
-
-  const [formData, setFormData] = React.useState({
-    fullName: '',
-    phone: '',
-    email: '',
-    projectOfInterest: 'Dholera SIR Smart City Enclave',
-    preferredDate: '',
-    message: '',
-  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,6 +66,9 @@ export function HomepageContactSection() {
         setSubmitError('Could not submit your request. Please try again or call the advisory desk.')
         return
       }
+      clearHomeDraft()
+      setDraftRestored(false)
+      setFormData(HOME_CONTACT_DEFAULTS)
       setSubmitted(true)
     } catch {
       setSubmitError('Could not submit your request. Please try again or call the advisory desk.')
@@ -157,6 +168,13 @@ export function HomepageContactSection() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate className="space-y-5">
+              {draftRestored && (
+                <DraftNotice onDiscard={() => {
+                  clearHomeDraft()
+                  setFormData(HOME_CONTACT_DEFAULTS)
+                  setDraftRestored(false)
+                }} />
+              )}
               <div className="space-y-1.5 pb-2 border-b border-brand-green/10">
                 <h3 className="font-serif text-xl sm:text-2xl font-bold text-brand-charcoal">
                   Book Site Visit & Plot Consultation

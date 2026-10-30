@@ -22,6 +22,21 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { readDraft } from '../utils/formDraft';
+import { usePersistDraft } from '../utils/useFormDraft';
+
+const SETTINGS_DRAFT_KEY = 'hs-admin-settings';
+
+type SettingsSnap = {
+  activeTab: Tab;
+  announcementText: string;
+  isTickerActive: boolean;
+  company: CompanyInfo;
+  commission: CommissionConfig;
+  mlm: MlmConfig;
+  frontendStats: FrontendStatsConfig;
+};
 
 interface CompanyInfo {
   companyName: string;
@@ -112,29 +127,81 @@ export const SettingsPage: React.FC = () => {
     locationsCount: '6 Enclaves',
     revenue: '₹120 Cr+'
   });
+  const [settingsBaseline, setSettingsBaseline] = useState<SettingsSnap | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const settingsSnapshot: SettingsSnap = {
+    activeTab, announcementText, isTickerActive, company, commission, mlm, frontendStats,
+  };
+  const clearSettingsDraft = usePersistDraft(
+    SETTINGS_DRAFT_KEY,
+    settingsSnapshot,
+    settingsBaseline,
+    !isLoading && settingsBaseline != null
+  );
 
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await api.get('/admin/settings');
       const data = res.data;
-
-      if (data.ANNOUNCEMENT_TICKER) {
-        setAnnouncementText(data.ANNOUNCEMENT_TICKER.value || '');
-        setIsTickerActive(data.ANNOUNCEMENT_TICKER.jsonValue?.isActive !== false);
-      }
-      if (data.COMPANY_INFO?.jsonValue) {
-        setCompany((prev) => ({ ...prev, ...data.COMPANY_INFO.jsonValue }));
-      }
-      if (data.COMMISSION_CONFIG?.jsonValue) {
-        setCommission((prev) => ({ ...prev, ...data.COMMISSION_CONFIG.jsonValue }));
-      }
-      if (data.MLM_CONFIG?.jsonValue) {
-        setMlm((prev) => ({ ...prev, ...data.MLM_CONFIG.jsonValue }));
-      }
-      if (data.FRONTEND_STATS?.jsonValue) {
-        setFrontendStats((prev) => ({ ...prev, ...data.FRONTEND_STATS.jsonValue }));
-      }
+      const serverSnap: SettingsSnap = {
+        activeTab: 'ANNOUNCEMENT',
+        announcementText: data.ANNOUNCEMENT_TICKER?.value || '',
+        isTickerActive: data.ANNOUNCEMENT_TICKER ? data.ANNOUNCEMENT_TICKER.jsonValue?.isActive !== false : true,
+        company: {
+          companyName: 'House & Sky Enterprise Advisory',
+          tagline: 'Premium Real Estate & Township Investments',
+          phone: '+91 93112 27789',
+          whatsapp: '+91 92899 27527',
+          email: 'info@houseandskyenterprise.com',
+          address: 'India',
+          gstNumber: '',
+          reraNumber: '',
+          website: '',
+          ...(data.COMPANY_INFO?.jsonValue || {}),
+        },
+        commission: {
+          enableAutoCommission: true,
+          enableWhatsappAlerts: true,
+          enableEmailAlerts: true,
+          defaultCommissionPercent: 2,
+          gstOnCommission: 18,
+          ...(data.COMMISSION_CONFIG?.jsonValue || {}),
+        },
+        mlm: {
+          maxLegDepth: 10,
+          minSalesForRankUp: 1,
+          autoRankPromotion: false,
+          ...(data.MLM_CONFIG?.jsonValue || {}),
+        },
+        frontendStats: {
+          projectsCount: '2 Projects',
+          advisorsCount: '45+ Team',
+          locationsCount: '6 Enclaves',
+          revenue: '₹120 Cr+',
+          ...(data.FRONTEND_STATS?.jsonValue || {}),
+        },
+      };
+      const saved = readDraft<SettingsSnap>(SETTINGS_DRAFT_KEY);
+      const next: SettingsSnap = saved
+        ? {
+            ...serverSnap,
+            ...saved,
+            company: { ...serverSnap.company, ...(saved.company || {}) },
+            commission: { ...serverSnap.commission, ...(saved.commission || {}) },
+            mlm: { ...serverSnap.mlm, ...(saved.mlm || {}) },
+            frontendStats: { ...serverSnap.frontendStats, ...(saved.frontendStats || {}) },
+          }
+        : serverSnap;
+      setActiveTab(next.activeTab || 'ANNOUNCEMENT');
+      setAnnouncementText(next.announcementText);
+      setIsTickerActive(next.isTickerActive);
+      setCompany(next.company);
+      setCommission(next.commission);
+      setMlm(next.mlm);
+      setFrontendStats(next.frontendStats);
+      setSettingsBaseline(serverSnap);
+      setDraftRestored(JSON.stringify(next) !== JSON.stringify(serverSnap));
     } catch (err) {
       console.error('Failed to load settings', err);
       toast.error('Failed to load settings. Please refresh.');
@@ -170,6 +237,9 @@ export const SettingsPage: React.FC = () => {
           jsonValue: frontendStats
         }
       });
+      clearSettingsDraft();
+      setSettingsBaseline(settingsSnapshot);
+      setDraftRestored(false);
       toast.success('All settings saved successfully!');
     } catch (err: any) {
       toast.error(err?.friendlyMessage || 'Failed to save settings');
@@ -192,6 +262,19 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 max-w-4xl">
+      {draftRestored && settingsBaseline && (
+        <DraftNotice onDiscard={() => {
+          clearSettingsDraft();
+          setActiveTab(settingsBaseline.activeTab);
+          setAnnouncementText(settingsBaseline.announcementText);
+          setIsTickerActive(settingsBaseline.isTickerActive);
+          setCompany(settingsBaseline.company);
+          setCommission(settingsBaseline.commission);
+          setMlm(settingsBaseline.mlm);
+          setFrontendStats(settingsBaseline.frontendStats);
+          setDraftRestored(false);
+        }} />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

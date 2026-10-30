@@ -20,10 +20,16 @@ import { GalleryUploader } from '../common/GalleryUploader';
 import LocationMapPicker from '../common/LocationMapPicker';
 import AreaUnitField from '../common/AreaUnitField';
 import { GalleryImage } from '../../types';
+import { DraftNotice } from '../common/DraftNotice';
+import { clearDraft } from '../../utils/formDraft';
+import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
+
+const ADD_PROJECT_DRAFT_KEY = 'hs-admin-project-new';
 
 interface AddProjectModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  onDiscardDraft?: () => void;
 }
 
 interface ExtractedPlot {
@@ -47,65 +53,125 @@ interface ExtractedPlot {
   coordinates?: { x: number; y: number; width: number; height: number };
 }
 
-export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuccess }) => {
+function addProjectDefaults() {
+  return {
+    step: 1 as 1 | 2 | 3,
+    name: '',
+    code: '',
+    location: '',
+    city: '',
+    state: 'Haryana',
+    description: '',
+    totalAreaSqft: 250000,
+    area: '',
+    totalPlots: 20,
+    basePricePerSqft: 4500,
+    priceRange: '',
+    highlights: [] as string[],
+    amenities: [] as string[],
+    locationAdvantages: [] as { distance: string; landmark: string }[],
+    highlightInput: '',
+    amenityInput: '',
+    locAdvDistance: '',
+    locAdvLandmark: '',
+    contactPhone: '',
+    contactEmail: '',
+    brochureUrl: '',
+    videoUrl: '',
+    reraNumber: '',
+    titleType: 'Freehold',
+    approvalAuthority: '',
+    mapImageUrl: '',
+    mapImageS3Key: '',
+    bannerImage: '',
+    bannerImageS3Key: '',
+    bannerFileName: '',
+    gallery: [] as GalleryImage[],
+    surveyNumber: '',
+    village: '',
+    googleMapsUrl: '',
+    mapEmbedUrl: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
+    logoImage: '',
+    isDholera: false,
+    fileName: '',
+    extractedPlots: [] as ExtractedPlot[],
+    ocrMapId: '',
+    ocrWarnings: [] as string[],
+  };
+}
+
+const AddProjectModalBody: React.FC<AddProjectModalProps> = ({ onClose, onSuccess, onDiscardDraft }) => {
   const toast = useToast();
+  const [boot] = useState(() => mergeDraft(ADD_PROJECT_DRAFT_KEY, addProjectDefaults()));
+  const initial = boot.value;
+  const [draftRestored] = useState(boot.restored);
+  const restoredStep: 1 | 2 | 3 = initial.step === 2 ? (initial.extractedPlots.length ? 3 : 1) : initial.step;
 
-  // Wizard Step: 1 = Form & File Upload, 2 = AI Vision Scanning, 3 = Review Extracted Plots
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-
-  // Form Fields
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [location, setLocation] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('Haryana');
-  const [description, setDescription] = useState('');
-  const [totalAreaSqft, setTotalAreaSqft] = useState(250000);
-  const [area, setArea] = useState(''); // e.g. "25 Bigha" or "3.2 Acres"
-  const [totalPlots, setTotalPlots] = useState(20);
-  const [basePricePerSqft, setBasePricePerSqft] = useState(4500);
-  const [priceRange, setPriceRange] = useState(''); // e.g. "₹18L – ₹45L"
-  const [highlights, setHighlights] = useState<string[]>([]);
-  const [amenities, setAmenities] = useState<string[]>([]);
-  const [locationAdvantages, setLocationAdvantages] = useState<{distance: string; landmark: string}[]>([]);
-  const [highlightInput, setHighlightInput] = useState('');
-  const [amenityInput, setAmenityInput] = useState('');
-  const [locAdvDistance, setLocAdvDistance] = useState('');
-  const [locAdvLandmark, setLocAdvLandmark] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [brochureUrl, setBrochureUrl] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
-  const [reraNumber, setReraNumber] = useState('');
-  const [titleType, setTitleType] = useState('Freehold');
-  const [approvalAuthority, setApprovalAuthority] = useState('');
-  const [mapImageUrl, setMapImageUrl] = useState('');
-  const [mapImageS3Key, setMapImageS3Key] = useState('');
-  const [bannerImage, setBannerImage] = useState('');
-  const [bannerImageS3Key, setBannerImageS3Key] = useState('');
-  const [bannerFileName, setBannerFileName] = useState('');
-  const [gallery, setGallery] = useState<GalleryImage[]>([]);
-  const [surveyNumber, setSurveyNumber] = useState('');
-  const [village, setVillage] = useState('');
-  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
-  const [mapEmbedUrl, setMapEmbedUrl] = useState('');
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
-  const [logoImage, setLogoImage] = useState('');
-  const [isDholera, setIsDholera] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3>(restoredStep);
+  const [name, setName] = useState(initial.name);
+  const [code, setCode] = useState(initial.code);
+  const [location, setLocation] = useState(initial.location);
+  const [city, setCity] = useState(initial.city);
+  const [state, setState] = useState(initial.state);
+  const [description, setDescription] = useState(initial.description);
+  const [totalAreaSqft, setTotalAreaSqft] = useState(initial.totalAreaSqft);
+  const [area, setArea] = useState(initial.area);
+  const [totalPlots, setTotalPlots] = useState(initial.totalPlots);
+  const [basePricePerSqft, setBasePricePerSqft] = useState(initial.basePricePerSqft);
+  const [priceRange, setPriceRange] = useState(initial.priceRange);
+  const [highlights, setHighlights] = useState<string[]>(initial.highlights);
+  const [amenities, setAmenities] = useState<string[]>(initial.amenities);
+  const [locationAdvantages, setLocationAdvantages] = useState<{distance: string; landmark: string}[]>(initial.locationAdvantages);
+  const [highlightInput, setHighlightInput] = useState(initial.highlightInput);
+  const [amenityInput, setAmenityInput] = useState(initial.amenityInput);
+  const [locAdvDistance, setLocAdvDistance] = useState(initial.locAdvDistance);
+  const [locAdvLandmark, setLocAdvLandmark] = useState(initial.locAdvLandmark);
+  const [contactPhone, setContactPhone] = useState(initial.contactPhone);
+  const [contactEmail, setContactEmail] = useState(initial.contactEmail);
+  const [brochureUrl, setBrochureUrl] = useState(initial.brochureUrl);
+  const [videoUrl, setVideoUrl] = useState(initial.videoUrl);
+  const [reraNumber, setReraNumber] = useState(initial.reraNumber);
+  const [titleType, setTitleType] = useState(initial.titleType);
+  const [approvalAuthority, setApprovalAuthority] = useState(initial.approvalAuthority);
+  const [mapImageUrl, setMapImageUrl] = useState(initial.mapImageUrl);
+  const [mapImageS3Key, setMapImageS3Key] = useState(initial.mapImageS3Key);
+  const [bannerImage, setBannerImage] = useState(initial.bannerImage);
+  const [bannerImageS3Key, setBannerImageS3Key] = useState(initial.bannerImageS3Key);
+  const [bannerFileName, setBannerFileName] = useState(initial.bannerFileName);
+  const [gallery, setGallery] = useState<GalleryImage[]>(initial.gallery);
+  const [surveyNumber, setSurveyNumber] = useState(initial.surveyNumber);
+  const [village, setVillage] = useState(initial.village);
+  const [googleMapsUrl, setGoogleMapsUrl] = useState(initial.googleMapsUrl);
+  const [mapEmbedUrl, setMapEmbedUrl] = useState(initial.mapEmbedUrl);
+  const [latitude, setLatitude] = useState<number | null>(initial.latitude);
+  const [longitude, setLongitude] = useState<number | null>(initial.longitude);
+  const [logoImage, setLogoImage] = useState(initial.logoImage);
+  const [isDholera, setIsDholera] = useState(initial.isDholera);
   const [file, setFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileName, setFileName] = useState(initial.fileName);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initial.mapImageUrl || null);
 
-  // AI OCR States
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatusMsg, setScanStatusMsg] = useState('');
-  const [extractedPlots, setExtractedPlots] = useState<ExtractedPlot[]>([]);
-  const [ocrMapId, setOcrMapId] = useState('');
-  const [ocrWarnings, setOcrWarnings] = useState<string[]>([]);
+  const [extractedPlots, setExtractedPlots] = useState<ExtractedPlot[]>(initial.extractedPlots);
+  const [ocrMapId, setOcrMapId] = useState(initial.ocrMapId);
+  const [ocrWarnings, setOcrWarnings] = useState<string[]>(initial.ocrWarnings);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+
+  const clearProjectDraft = usePersistDraft(ADD_PROJECT_DRAFT_KEY, {
+    step: (step === 2 ? (extractedPlots.length ? 3 : 1) : step) as 1 | 2 | 3,
+    name, code, location, city, state, description, totalAreaSqft, area, totalPlots,
+    basePricePerSqft, priceRange, highlights, amenities, locationAdvantages,
+    highlightInput, amenityInput, locAdvDistance, locAdvLandmark, contactPhone, contactEmail,
+    brochureUrl, videoUrl, reraNumber, titleType, approvalAuthority, mapImageUrl, mapImageS3Key,
+    bannerImage, bannerImageS3Key, bannerFileName, gallery, surveyNumber, village,
+    googleMapsUrl, mapEmbedUrl, latitude, longitude, logoImage, isDholera, fileName,
+    extractedPlots, ocrMapId, ocrWarnings,
+  }, addProjectDefaults());
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -309,6 +375,7 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
         mapId: ocrMapId || undefined
       });
 
+      clearProjectDraft();
       toast.success(
         extractedPlots.length > 0
           ? `Project created with ${extractedPlots.length} plots extracted from the naksha.`
@@ -342,6 +409,8 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {draftRestored && onDiscardDraft && <DraftNotice onDiscard={onDiscardDraft} />}
 
         {/* Step Navigation Pill Indicator */}
         <div className="flex items-center justify-between bg-[#FDFCF0] p-2.5 rounded-2xl border border-[#0B4F3C]/15 text-xs font-bold">
@@ -876,5 +945,19 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSuc
         )}
       </div>
     </div>
+  );
+};
+
+export const AddProjectModal: React.FC<AddProjectModalProps> = (props) => {
+  const [session, setSession] = useState(0);
+  return (
+    <AddProjectModalBody
+      key={session}
+      {...props}
+      onDiscardDraft={() => {
+        clearDraft(ADD_PROJECT_DRAFT_KEY);
+        setSession((n) => n + 1);
+      }}
+    />
   );
 };

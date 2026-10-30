@@ -1,41 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, UserPlus, GitMerge } from 'lucide-react';
 import api from '../../services/api';
-import { RANKS, Employee } from '../../types';
+import { RANKS } from '../../types';
 import { useToast } from '../../context/ToastContext';
+import { DraftNotice } from '../common/DraftNotice';
+import { clearDraft } from '../../utils/formDraft';
+import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
+import { SponsorSearchField } from './SponsorSearchField';
+
+const EMPLOYEE_DRAFT_KEY = 'hs-admin-employee-new';
+const EMPLOYEE_DEFAULTS = {
+  fullName: '',
+  email: '',
+  phone: '',
+  role: 'AGENT',
+  currentRank: 'Business Executive',
+  parentId: '',
+  legNumber: 1,
+};
 
 interface AddEmployeeModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  onDiscardDraft?: () => void;
 }
 
-export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ onClose, onSuccess }) => {
+const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSuccess, onDiscardDraft }) => {
   const toast = useToast();
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [boot] = useState(() => mergeDraft(EMPLOYEE_DRAFT_KEY, EMPLOYEE_DEFAULTS));
+  const initial = boot.value;
+  const [draftRestored] = useState(boot.restored);
+  const [fullName, setFullName] = useState(initial.fullName);
+  const [email, setEmail] = useState(initial.email);
+  const [phone, setPhone] = useState(initial.phone);
   const [password, setPassword] = useState('Password123!');
-  const [role, setRole] = useState('AGENT');
-  const [currentRank, setCurrentRank] = useState('Business Executive');
-  const [parentId, setParentId] = useState('');
-  const [legNumber, setLegNumber] = useState<number>(1);
-  const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+  const [role, setRole] = useState(initial.role);
+  const [currentRank, setCurrentRank] = useState(initial.currentRank);
+  const [parentId, setParentId] = useState(initial.parentId);
+  const [legNumber, setLegNumber] = useState<number>(initial.legNumber);
+  const clearEmployeeDraft = usePersistDraft(EMPLOYEE_DRAFT_KEY, {
+    fullName, email, phone, role, currentRank, parentId, legNumber,
+  }, EMPLOYEE_DEFAULTS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-
-  useEffect(() => {
-    fetchExistingEmployees();
-  }, []);
-
-  const fetchExistingEmployees = async () => {
-    try {
-      const res = await api.get('/employees');
-      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-      setEmployeesList(data);
-    } catch (e) {
-      console.warn('Could not load existing employees list for sponsor picker:', e);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +60,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ onClose, onS
         legNumber
       });
 
+      clearEmployeeDraft();
       toast.success('Agent / Employee onboarded successfully into MLM network!');
       onSuccess();
       onClose();
@@ -83,6 +91,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ onClose, onS
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {draftRestored && onDiscardDraft && <DraftNotice onDiscard={onDiscardDraft} />}
 
         {errorMsg && (
           <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold">
@@ -176,21 +186,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ onClose, onS
 
                 <div>
                   <label className="text-[#171A18]/70 font-semibold block mb-1">Sponsorship</label>
-                  <select
-                    value={parentId}
-                    onChange={(e) => setParentId(e.target.value)}
-                    className="w-full bg-white border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]"
-                  >
-                    <option value="">-- Direct Under Top Admin (No Parent) --</option>
-                    {employeesList.map((emp) => {
-                      const empName = emp.userId?.fullName || emp.employeeCode;
-                      return (
-                        <option key={emp.id || (emp as any)._id} value={emp.id || (emp as any)._id}>
-                          {empName} ({emp.employeeCode} - {emp.currentRank})
-                        </option>
-                      );
-                    })}
-                  </select>
+                  <SponsorSearchField value={parentId} onChange={setParentId} allowEmpty inputId="add-employee-sponsor" />
                 </div>
 
                 <div>
@@ -252,5 +248,19 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({ onClose, onS
         </form>
       </div>
     </div>
+  );
+};
+
+export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = (props) => {
+  const [session, setSession] = useState(0);
+  return (
+    <AddEmployeeModalBody
+      key={session}
+      {...props}
+      onDiscardDraft={() => {
+        clearDraft(EMPLOYEE_DRAFT_KEY);
+        setSession((n) => n + 1);
+      }}
+    />
   );
 };

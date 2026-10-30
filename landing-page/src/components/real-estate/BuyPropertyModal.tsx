@@ -7,6 +7,8 @@ import {
   CheckCircle2, AlertCircle, Loader2, Calendar
 } from 'lucide-react'
 import { getApiBaseUrl } from '@/utils/api'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { useClientDraft } from '@/utils/useFormDraft'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,40 +113,39 @@ export function BuyPropertyModal({
   propertyPrice,
   defaultIntent = 'BUY',
 }: PropertyInquiryModalProps) {
-  const [intent, setIntent] = React.useState<InquiryIntent>(defaultIntent)
-  const [name, setName] = React.useState('')
-  const [phone, setPhone] = React.useState('')
-  const [email, setEmail] = React.useState('')
-  const [budget, setBudget] = React.useState('')
-  const [duration, setDuration] = React.useState('')
-  const [moveIn, setMoveIn] = React.useState('')
-  const [message, setMessage] = React.useState('')
+  const buyDefaults = {
+    intent: defaultIntent,
+    name: '',
+    phone: '',
+    email: '',
+    budget: '',
+    duration: '',
+    moveIn: '',
+    message: '',
+  }
+  const buyKey = `hs-public-buy-${propertyId}`
+  const buyDraft = useClientDraft(buyKey, buyDefaults)
+  const intent = buyDraft.value.intent
+  const setIntent = (next: InquiryIntent) => buyDraft.setValue((prev) => ({ ...prev, intent: next }))
+  const name = buyDraft.value.name
+  const setName = (next: string) => buyDraft.setValue((prev) => ({ ...prev, name: next }))
+  const phone = buyDraft.value.phone
+  const setPhone = (next: string) => buyDraft.setValue((prev) => ({ ...prev, phone: next }))
+  const email = buyDraft.value.email
+  const setEmail = (next: string) => buyDraft.setValue((prev) => ({ ...prev, email: next }))
+  const budget = buyDraft.value.budget
+  const setBudget = (next: string) => buyDraft.setValue((prev) => ({ ...prev, budget: next }))
+  const duration = buyDraft.value.duration
+  const setDuration = (next: string) => buyDraft.setValue((prev) => ({ ...prev, duration: next }))
+  const moveIn = buyDraft.value.moveIn
+  const setMoveIn = (next: string) => buyDraft.setValue((prev) => ({ ...prev, moveIn: next }))
+  const message = buyDraft.value.message
+  const setMessage = (next: string) => buyDraft.setValue((prev) => ({ ...prev, message: next }))
+  const draftRestored = buyDraft.restored
+  const setDraftRestored = buyDraft.setRestored
+  const clearBuyDraft = buyDraft.clear
   const [formState, setFormState] = React.useState<FormState>('idle')
   const [errorMsg, setErrorMsg] = React.useState('')
-
-  // Reset on close
-  React.useEffect(() => {
-    if (!isOpen) {
-      setTimeout(() => {
-        setFormState('idle')
-        setErrorMsg('')
-        setName('')
-        setPhone('')
-        setEmail('')
-        setBudget('')
-        setDuration('')
-        setMoveIn('')
-        setMessage('')
-        setIntent(defaultIntent)
-      }, 300)
-    }
-  }, [isOpen, defaultIntent])
-
-  // Reset budget when switching intent
-  React.useEffect(() => {
-    setBudget('')
-    setDuration('')
-  }, [intent])
 
   const cfg = INTENT_CONFIG[intent]
   const IntentIcon = cfg.icon
@@ -175,6 +176,8 @@ export function BuyPropertyModal({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.message || 'Submission failed. Please try again.')
+      clearBuyDraft()
+      setDraftRestored(false)
       setFormState('success')
     } catch (err: any) {
       setFormState('error')
@@ -217,7 +220,13 @@ export function BuyPropertyModal({
                 <button
                   key={it}
                   type="button"
-                  onClick={() => setIntent(it)}
+                  onClick={() => {
+                    if (it !== intent) {
+                      setBudget('')
+                      setDuration('')
+                    }
+                    setIntent(it)
+                  }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                     isActive
                       ? c.activeBtnClass
@@ -280,6 +289,20 @@ export function BuyPropertyModal({
             </div>
           ) : (
               <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                {draftRestored && (
+                  <DraftNotice onDiscard={() => {
+                    clearBuyDraft()
+                    setIntent(defaultIntent)
+                    setName('')
+                    setPhone('')
+                    setEmail('')
+                    setBudget('')
+                    setDuration('')
+                    setMoveIn('')
+                    setMessage('')
+                    setDraftRestored(false)
+                  }} />
+                )}
                 {formState === 'error' && (
                   <div className="hs-error-message">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />

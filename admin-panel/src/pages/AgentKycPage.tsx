@@ -4,6 +4,9 @@ import api from '../services/api';
 import { AgentKyc, KycStatus } from '../types';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { readDraft } from '../utils/formDraft';
+import { usePersistDraft } from '../utils/useFormDraft';
 
 const KYC_UPLOAD_FOLDER = 'agent_kyc';
 const STATUS_DRAFT: KycStatus = 'DRAFT';
@@ -102,13 +105,17 @@ const Field: React.FC<FieldProps> = ({ label, required, children }) => (
 export const AgentKycPage: React.FC = () => {
   const toast = useToast();
   const { user } = useAuth();
+  const draftKey = `hs-admin-kyc-${user?.id || 'me'}`;
   const [form, setForm] = useState<AgentKyc>(EMPTY_KYC);
+  const [serverForm, setServerForm] = useState<AgentKyc | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
   const [employeeCode, setEmployeeCode] = useState('');
   const [joiningUnder, setJoiningUnder] = useState({ employeeCode: '', name: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState<string>('');
+  const clearKycDraft = usePersistDraft(draftKey, form, serverForm, !isLoading && canEdit && serverForm != null);
 
   const setField = (key: keyof AgentKyc, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -119,13 +126,21 @@ export const AgentKycPage: React.FC = () => {
     try {
       const res = await api.get('/kyc/me');
       const kyc = res.data?.kyc || {};
-      setForm({
+      const editable = Boolean(res.data?.canEdit);
+      const server: AgentKyc = {
         ...EMPTY_KYC,
         ...kyc,
         dateOfBirth: toDateInput(kyc.dateOfBirth),
         nomineeDob: toDateInput(kyc.nomineeDob)
-      });
-      setCanEdit(Boolean(res.data?.canEdit));
+      };
+      const saved = editable ? readDraft<AgentKyc>(draftKey) : null;
+      const next = saved
+        ? { ...server, ...saved, status: server.status, rejectionReason: server.rejectionReason }
+        : server;
+      setForm(next);
+      setServerForm(server);
+      setDraftRestored(Boolean(saved && JSON.stringify(next) !== JSON.stringify(server)));
+      setCanEdit(editable);
       setEmployeeCode(res.data?.employee?.employeeCode || '');
       setJoiningUnder(res.data?.joiningUnder || { employeeCode: '', name: '' });
     } catch (err: any) {
@@ -172,6 +187,14 @@ export const AgentKycPage: React.FC = () => {
         nomineeDob: toDateInput(kyc.nomineeDob)
       });
       setCanEdit(Boolean(res.data?.canEdit));
+      clearKycDraft();
+      setServerForm({
+        ...EMPTY_KYC,
+        ...kyc,
+        dateOfBirth: toDateInput(kyc.dateOfBirth),
+        nomineeDob: toDateInput(kyc.nomineeDob)
+      });
+      setDraftRestored(false);
       toast.success(submit ? 'KYC submitted for manager/admin approval' : 'KYC draft saved');
     } catch (err: any) {
       toast.error(err?.friendlyMessage || 'Failed to save KYC');
@@ -209,6 +232,14 @@ export const AgentKycPage: React.FC = () => {
           <p className="mt-1 font-semibold">Reason: {form.rejectionReason}</p>
         ) : null}
       </div>
+
+      {draftRestored && serverForm && (
+        <DraftNotice onDiscard={() => {
+          clearKycDraft();
+          setForm(serverForm);
+          setDraftRestored(false);
+        }} />
+      )}
 
       <form
         className="bg-white rounded-3xl border border-[#0B4F3C]/15 shadow-sm p-5 sm:p-7 space-y-5"

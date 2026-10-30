@@ -4,6 +4,8 @@ import api from '../services/api';
 import { EmptyState } from '../components/common/EmptyState';
 import { ErrorState } from '../components/common/ErrorState';
 import { useToast } from '../context/ToastContext';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { mergeDraft, usePersistDraft } from '../utils/useFormDraft';
 
 export interface CityAdminItem {
   _id: string;
@@ -26,16 +28,37 @@ interface CityModalProps {
   onSuccess: () => void;
 }
 
+function cityBaseline(city: CityAdminItem | null) {
+  return {
+    name: city?.name || '',
+    state: city?.state || '',
+    imageUrl: city?.imageUrl || '',
+    imageS3Key: city?.imageS3Key || '',
+    latitude: city?.latitude != null ? String(city.latitude) : '',
+    longitude: city?.longitude != null ? String(city.longitude) : '',
+    order: city?.order || 0,
+    isActive: city ? city.isActive : true,
+  };
+}
+
 function AddEditCityModal({ city, onClose, onSuccess }: CityModalProps) {
   const toast = useToast();
-  const [name, setName] = useState(city?.name || '');
-  const [state, setState] = useState(city?.state || '');
-  const [imageUrl, setImageUrl] = useState(city?.imageUrl || '');
-  const [imageS3Key, setImageS3Key] = useState(city?.imageS3Key || '');
-  const [latitude, setLatitude] = useState(city?.latitude != null ? String(city.latitude) : '');
-  const [longitude, setLongitude] = useState(city?.longitude != null ? String(city.longitude) : '');
-  const [order, setOrder] = useState<number>(city?.order || 0);
-  const [isActive, setIsActive] = useState<boolean>(city ? city.isActive : true);
+  const draftKey = `hs-admin-city-${city?._id || 'new'}`;
+  const baseline = cityBaseline(city);
+  const [boot] = useState(() => mergeDraft(draftKey, baseline));
+  const initial = boot.value;
+  const [draftRestored, setDraftRestored] = useState(boot.restored);
+  const [name, setName] = useState(initial.name);
+  const [state, setState] = useState(initial.state);
+  const [imageUrl, setImageUrl] = useState(initial.imageUrl);
+  const [imageS3Key, setImageS3Key] = useState(initial.imageS3Key);
+  const [latitude, setLatitude] = useState(initial.latitude);
+  const [longitude, setLongitude] = useState(initial.longitude);
+  const [order, setOrder] = useState<number>(initial.order);
+  const [isActive, setIsActive] = useState<boolean>(initial.isActive);
+  const clearCityDraft = usePersistDraft(draftKey, {
+    name, state, imageUrl, imageS3Key, latitude, longitude, order, isActive,
+  }, baseline);
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,6 +122,7 @@ function AddEditCityModal({ city, onClose, onSuccess }: CityModalProps) {
         : await api.post('/admin/cities', payload);
       const saved: CityAdminItem = res.data;
       const located = saved?.latitude != null && saved?.longitude != null;
+      clearCityDraft();
       toast.success(
         `${saved?.name || payload.name} ${city ? 'updated' : 'added'}` +
         (located ? '' : ' — location not found, nearby search will skip this city until coordinates are added')
@@ -129,6 +153,20 @@ function AddEditCityModal({ city, onClose, onSuccess }: CityModalProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
+        {draftRestored && (
+          <DraftNotice onDiscard={() => {
+            clearCityDraft();
+            setName(baseline.name);
+            setState(baseline.state);
+            setImageUrl(baseline.imageUrl);
+            setImageS3Key(baseline.imageS3Key);
+            setLatitude(baseline.latitude);
+            setLongitude(baseline.longitude);
+            setOrder(baseline.order);
+            setIsActive(baseline.isActive);
+            setDraftRestored(false);
+          }} />
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div className="space-y-2">

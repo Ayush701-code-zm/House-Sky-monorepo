@@ -6,57 +6,118 @@ import { useToast } from '../../context/ToastContext';
 import { GalleryUploader } from '../common/GalleryUploader';
 import LocationMapPicker from '../common/LocationMapPicker';
 import AreaUnitField from '../common/AreaUnitField';
+import { DraftNotice } from '../common/DraftNotice';
+import { clearDraft } from '../../utils/formDraft';
+import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
 
 interface EditProjectModalProps {
   project: Project;
   onClose: () => void;
   onSuccess: () => void;
+  onDiscardDraft?: () => void;
 }
 
-export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onClose, onSuccess }) => {
-  const toast = useToast();
-  const [name, setName] = useState(project.name);
-  const [code, setCode] = useState(project.code);
-  const [location, setLocation] = useState(project.location);
-  const [city, setCity] = useState((project as any).city || '');
-  const [state, setState] = useState((project as any).state || 'Haryana');
-  const [description, setDescription] = useState((project as any).description || '');
-  const [totalAreaSqft, setTotalAreaSqft] = useState(project.totalAreaSqft || 250000);
-  const [area, setArea] = useState((project as any).area || '');
-  const [totalPlots, setTotalPlots] = useState(project.totalPlots);
-  const [basePricePerSqft, setBasePricePerSqft] = useState(project.basePricePerSqft);
-  const [priceRange, setPriceRange] = useState((project as any).priceRange || '');
-  const [highlights, setHighlights] = useState<string[]>((project as any).highlights || []);
-  const [amenities, setAmenities] = useState<string[]>((project as any).amenities || []);
-  const [locationAdvantages, setLocationAdvantages] = useState<{distance: string; landmark: string}[]>((project as any).locationAdvantages || []);
-  const [highlightInput, setHighlightInput] = useState('');
-  const [amenityInput, setAmenityInput] = useState('');
-  const [locAdvDistance, setLocAdvDistance] = useState('');
-  const [locAdvLandmark, setLocAdvLandmark] = useState('');
-  const [contactPhone, setContactPhone] = useState((project as any).contactPhone || '');
-  const [contactEmail, setContactEmail] = useState((project as any).contactEmail || '');
-  const [brochureUrl, setBrochureUrl] = useState((project as any).brochureUrl || '');
-  const [videoUrl, setVideoUrl] = useState((project as any).videoUrl || '');
-  const [reraNumber, setReraNumber] = useState((project as any).legalInfo?.reraNumber || '');
-  const [titleType, setTitleType] = useState((project as any).legalInfo?.titleType || 'Freehold');
-  const [approvalAuthority, setApprovalAuthority] = useState((project as any).legalInfo?.approvalAuthority || '');
-  const [mapImageUrl, setMapImageUrl] = useState((project as any).mapImageUrl || '');
-  const [mapImageS3Key, setMapImageS3Key] = useState((project as any).mapImageS3Key || '');
-  const [bannerImage, setBannerImage] = useState(project.bannerImage && project.bannerImage !== (project as any).mapImageUrl ? project.bannerImage : '');
-  const [bannerImageS3Key, setBannerImageS3Key] = useState((project as any).bannerImageS3Key || '');
-  const [bannerFileName, setBannerFileName] = useState('');
-  const [gallery, setGallery] = useState<GalleryImage[]>(project.gallery || []);
-  const [surveyNumber, setSurveyNumber] = useState(project.surveyNumber || '');
-  const [village, setVillage] = useState(project.village || '');
-  const [googleMapsUrl, setGoogleMapsUrl] = useState(project.googleMapsUrl || '');
-  const [mapEmbedUrl, setMapEmbedUrl] = useState(project.mapEmbedUrl || '');
-  const [latitude, setLatitude] = useState<number | null>(project.latitude ?? null);
-  const [longitude, setLongitude] = useState<number | null>(project.longitude ?? null);
-  const [fileName, setFileName] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDholera, setIsDholera] = useState(project.isDholera || false);
+function editProjectBaseline(project: Project) {
+  return {
+    name: project.name,
+    code: project.code,
+    location: project.location,
+    city: (project as any).city || '',
+    state: (project as any).state || 'Haryana',
+    description: (project as any).description || '',
+    totalAreaSqft: project.totalAreaSqft || 250000,
+    area: (project as any).area || '',
+    totalPlots: project.totalPlots,
+    basePricePerSqft: project.basePricePerSqft,
+    priceRange: (project as any).priceRange || '',
+    highlights: ((project as any).highlights || []) as string[],
+    amenities: ((project as any).amenities || []) as string[],
+    locationAdvantages: ((project as any).locationAdvantages || []) as { distance: string; landmark: string }[],
+    highlightInput: '',
+    amenityInput: '',
+    locAdvDistance: '',
+    locAdvLandmark: '',
+    contactPhone: (project as any).contactPhone || '',
+    contactEmail: (project as any).contactEmail || '',
+    brochureUrl: (project as any).brochureUrl || '',
+    videoUrl: (project as any).videoUrl || '',
+    reraNumber: (project as any).legalInfo?.reraNumber || '',
+    titleType: (project as any).legalInfo?.titleType || 'Freehold',
+    approvalAuthority: (project as any).legalInfo?.approvalAuthority || '',
+    mapImageUrl: (project as any).mapImageUrl || '',
+    mapImageS3Key: (project as any).mapImageS3Key || '',
+    bannerImage: project.bannerImage && project.bannerImage !== (project as any).mapImageUrl ? project.bannerImage : '',
+    bannerImageS3Key: (project as any).bannerImageS3Key || '',
+    bannerFileName: '',
+    gallery: (project.gallery || []) as GalleryImage[],
+    surveyNumber: project.surveyNumber || '',
+    village: project.village || '',
+    googleMapsUrl: project.googleMapsUrl || '',
+    mapEmbedUrl: project.mapEmbedUrl || '',
+    latitude: project.latitude ?? null,
+    longitude: project.longitude ?? null,
+    fileName: '',
+    isDholera: project.isDholera || false,
+  };
+}
 
+const EditProjectModalBody: React.FC<EditProjectModalProps> = ({ project, onClose, onSuccess, onDiscardDraft }) => {
+  const toast = useToast();
+  const draftKey = `hs-admin-project-edit-${project._id}`;
+  const baseline = editProjectBaseline(project);
+  const [boot] = useState(() => mergeDraft(draftKey, baseline));
+  const initial = boot.value;
+  const [draftRestored] = useState(boot.restored);
+  const [name, setName] = useState(initial.name);
+  const [code, setCode] = useState(initial.code);
+  const [location, setLocation] = useState(initial.location);
+  const [city, setCity] = useState(initial.city);
+  const [state, setState] = useState(initial.state);
+  const [description, setDescription] = useState(initial.description);
+  const [totalAreaSqft, setTotalAreaSqft] = useState(initial.totalAreaSqft);
+  const [area, setArea] = useState(initial.area);
+  const [totalPlots, setTotalPlots] = useState(initial.totalPlots);
+  const [basePricePerSqft, setBasePricePerSqft] = useState(initial.basePricePerSqft);
+  const [priceRange, setPriceRange] = useState(initial.priceRange);
+  const [highlights, setHighlights] = useState<string[]>(initial.highlights);
+  const [amenities, setAmenities] = useState<string[]>(initial.amenities);
+  const [locationAdvantages, setLocationAdvantages] = useState<{distance: string; landmark: string}[]>(initial.locationAdvantages);
+  const [highlightInput, setHighlightInput] = useState(initial.highlightInput);
+  const [amenityInput, setAmenityInput] = useState(initial.amenityInput);
+  const [locAdvDistance, setLocAdvDistance] = useState(initial.locAdvDistance);
+  const [locAdvLandmark, setLocAdvLandmark] = useState(initial.locAdvLandmark);
+  const [contactPhone, setContactPhone] = useState(initial.contactPhone);
+  const [contactEmail, setContactEmail] = useState(initial.contactEmail);
+  const [brochureUrl, setBrochureUrl] = useState(initial.brochureUrl);
+  const [videoUrl, setVideoUrl] = useState(initial.videoUrl);
+  const [reraNumber, setReraNumber] = useState(initial.reraNumber);
+  const [titleType, setTitleType] = useState(initial.titleType);
+  const [approvalAuthority, setApprovalAuthority] = useState(initial.approvalAuthority);
+  const [mapImageUrl, setMapImageUrl] = useState(initial.mapImageUrl);
+  const [mapImageS3Key, setMapImageS3Key] = useState(initial.mapImageS3Key);
+  const [bannerImage, setBannerImage] = useState(initial.bannerImage);
+  const [bannerImageS3Key, setBannerImageS3Key] = useState(initial.bannerImageS3Key);
+  const [bannerFileName, setBannerFileName] = useState(initial.bannerFileName);
+  const [gallery, setGallery] = useState<GalleryImage[]>(initial.gallery);
+  const [surveyNumber, setSurveyNumber] = useState(initial.surveyNumber);
+  const [village, setVillage] = useState(initial.village);
+  const [googleMapsUrl, setGoogleMapsUrl] = useState(initial.googleMapsUrl);
+  const [mapEmbedUrl, setMapEmbedUrl] = useState(initial.mapEmbedUrl);
+  const [latitude, setLatitude] = useState<number | null>(initial.latitude);
+  const [longitude, setLongitude] = useState<number | null>(initial.longitude);
+  const [fileName, setFileName] = useState(initial.fileName);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDholera, setIsDholera] = useState(initial.isDholera);
   const [isUploading, setIsUploading] = useState(false);
+
+  const clearEditDraft = usePersistDraft(draftKey, {
+    name, code, location, city, state, description, totalAreaSqft, area, totalPlots,
+    basePricePerSqft, priceRange, highlights, amenities, locationAdvantages,
+    highlightInput, amenityInput, locAdvDistance, locAdvLandmark, contactPhone, contactEmail,
+    brochureUrl, videoUrl, reraNumber, titleType, approvalAuthority, mapImageUrl, mapImageS3Key,
+    bannerImage, bannerImageS3Key, bannerFileName, gallery, surveyNumber, village,
+    googleMapsUrl, mapEmbedUrl, latitude, longitude, fileName, isDholera,
+  }, baseline);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -150,6 +211,7 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onC
         isDholera
       });
 
+      clearEditDraft();
       toast.success('Project updated successfully!');
       onSuccess();
       onClose();
@@ -178,6 +240,8 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onC
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {draftRestored && onDiscardDraft && <DraftNotice onDiscard={onDiscardDraft} />}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
@@ -491,5 +555,20 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({ project, onC
         </form>
       </div>
     </div>
+  );
+};
+
+export const EditProjectModal: React.FC<EditProjectModalProps> = (props) => {
+  const [session, setSession] = useState(0);
+  const draftKey = `hs-admin-project-edit-${props.project._id}`;
+  return (
+    <EditProjectModalBody
+      key={session}
+      {...props}
+      onDiscardDraft={() => {
+        clearDraft(draftKey);
+        setSession((n) => n + 1);
+      }}
+    />
   );
 };

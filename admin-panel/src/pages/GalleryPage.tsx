@@ -4,6 +4,8 @@ import api from '../services/api';
 import { EmptyState } from '../components/common/EmptyState';
 import { ErrorState } from '../components/common/ErrorState';
 import { useToast } from '../context/ToastContext';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { mergeDraft, usePersistDraft } from '../utils/useFormDraft';
 
 export interface GalleryAdminItem {
   _id: string;
@@ -42,15 +44,35 @@ interface AddEditModalProps {
   onSuccess: () => void;
 }
 
+function galleryBaseline(item?: GalleryAdminItem | null) {
+  return {
+    title: item?.title || '',
+    category: item?.category || 'PROJECT_SHOWCASE',
+    imageUrl: item?.imageUrl || '',
+    imageS3Key: item?.imageS3Key || '',
+    caption: item?.caption || '',
+    order: item?.order || 0,
+    isPublished: item?.isPublished !== undefined ? item.isPublished : true,
+  };
+}
+
 function AddEditGalleryModal({ item, onClose, onSuccess }: AddEditModalProps) {
   const toast = useToast();
-  const [title, setTitle] = useState(item?.title || '');
-  const [category, setCategory] = useState(item?.category || 'PROJECT_SHOWCASE');
-  const [imageUrl, setImageUrl] = useState(item?.imageUrl || '');
-  const [imageS3Key, setImageS3Key] = useState(item?.imageS3Key || '');
-  const [caption, setCaption] = useState(item?.caption || '');
-  const [order, setOrder] = useState<number>(item?.order || 0);
-  const [isPublished, setIsPublished] = useState<boolean>(item?.isPublished !== undefined ? item.isPublished : true);
+  const draftKey = `hs-admin-gallery-${item?._id || 'new'}`;
+  const baseline = galleryBaseline(item);
+  const [boot] = useState(() => mergeDraft(draftKey, baseline));
+  const initial = boot.value;
+  const [draftRestored, setDraftRestored] = useState(boot.restored);
+  const [title, setTitle] = useState(initial.title);
+  const [category, setCategory] = useState(initial.category);
+  const [imageUrl, setImageUrl] = useState(initial.imageUrl);
+  const [imageS3Key, setImageS3Key] = useState(initial.imageS3Key);
+  const [caption, setCaption] = useState(initial.caption);
+  const [order, setOrder] = useState<number>(initial.order);
+  const [isPublished, setIsPublished] = useState<boolean>(initial.isPublished);
+  const clearGalleryDraft = usePersistDraft(draftKey, {
+    title, category, imageUrl, imageS3Key, caption, order, isPublished,
+  }, baseline);
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +132,7 @@ function AddEditGalleryModal({ item, onClose, onSuccess }: AddEditModalProps) {
         await api.post('/admin/gallery', payload);
         toast.success('New image added to Gallery');
       }
+      clearGalleryDraft();
       onSuccess();
       onClose();
     } catch (e: any) {
@@ -138,6 +161,19 @@ function AddEditGalleryModal({ item, onClose, onSuccess }: AddEditModalProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
+        {draftRestored && (
+          <DraftNotice onDiscard={() => {
+            clearGalleryDraft();
+            setTitle(baseline.title);
+            setCategory(baseline.category);
+            setImageUrl(baseline.imageUrl);
+            setImageS3Key(baseline.imageS3Key);
+            setCaption(baseline.caption);
+            setOrder(baseline.order);
+            setIsPublished(baseline.isPublished);
+            setDraftRestored(false);
+          }} />
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Image Upload Area */}

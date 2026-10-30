@@ -6,10 +6,14 @@ import { HouseAndSkyLogo } from './HouseAndSkyLogo'
 import { Mail, MapPin, Phone, ShieldCheck, MessageCircle } from 'lucide-react'
 import { SITE } from '@/utils/siteConfig'
 import { getApiBaseUrl } from '@/utils/api'
+import { useClientDraft } from '@/utils/useFormDraft'
 import { cityPageHref } from '@/utils/cities'
 
 export function Footer() {
-  const [email, setEmail] = React.useState('')
+  const newsletterDraft = useClientDraft('hs-public-newsletter', { email: '' })
+  const email = newsletterDraft.value.email
+  const setEmail = (next: string) => newsletterDraft.setValue({ email: next })
+  const clearNewsletterDraft = newsletterDraft.clear
   const [subscribed, setSubscribed] = React.useState(false)
   const [subscribeError, setSubscribeError] = React.useState('')
   const [isSubscribing, setIsSubscribing] = React.useState(false)
@@ -36,6 +40,7 @@ export function Footer() {
         setSubscribeError('Could not subscribe right now. Please try again.')
         return
       }
+      clearNewsletterDraft()
       setSubscribed(true)
       setEmail('')
       setTimeout(() => setSubscribed(false), 5000)

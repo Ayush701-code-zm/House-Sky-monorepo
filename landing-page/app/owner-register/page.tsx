@@ -8,6 +8,8 @@ import { getApiBaseUrl } from '@/utils/api'
 import { scrollToFirstFormIssue } from '@/utils/scroll'
 import { Eye, EyeOff, UserPlus, Lock, Mail, Phone, User, CheckCircle2, ArrowRight } from 'lucide-react'
 import { HouseAndSkyLogo } from '@/components/layout/HouseAndSkyLogo'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { useClientDraft } from '@/utils/useFormDraft'
 
 const MIN_PASSWORD_LENGTH = 6
 
@@ -24,9 +26,17 @@ function RegisterContent() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/list-your-property'
 
-  const [fullName, setFullName] = React.useState('')
-  const [email, setEmail] = React.useState('')
-  const [phone, setPhone] = React.useState('')
+  const ownerDefaults = { fullName: '', email: '', phone: '' }
+  const ownerDraft = useClientDraft('hs-public-owner-register', ownerDefaults)
+  const fullName = ownerDraft.value.fullName
+  const setFullName = (next: string) => ownerDraft.setValue((prev) => ({ ...prev, fullName: next }))
+  const email = ownerDraft.value.email
+  const setEmail = (next: string) => ownerDraft.setValue((prev) => ({ ...prev, email: next }))
+  const phone = ownerDraft.value.phone
+  const setPhone = (next: string) => ownerDraft.setValue((prev) => ({ ...prev, phone: next }))
+  const draftRestored = ownerDraft.restored
+  const setDraftRestored = ownerDraft.setRestored
+  const clearOwnerDraft = ownerDraft.clear
   const [password, setPassword] = React.useState('')
   const [confirmPassword, setConfirmPassword] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
@@ -89,6 +99,8 @@ function RegisterContent() {
         return
       }
 
+      clearOwnerDraft()
+      setDraftRestored(false)
       setRegisteredEmail(email.trim().toLowerCase())
       setIsRegisteredSuccess(true)
     } catch {
@@ -152,6 +164,15 @@ function RegisterContent() {
                 </div>
               )}
 
+              {draftRestored && (
+                <DraftNotice onDiscard={() => {
+                  clearOwnerDraft()
+                  setFullName('')
+                  setEmail('')
+                  setPhone('')
+                  setDraftRestored(false)
+                }} />
+              )}
               <form onSubmit={handleSubmit} noValidate className="space-y-5">
                 {/* Full Name */}
                 <div className="space-y-1.5">

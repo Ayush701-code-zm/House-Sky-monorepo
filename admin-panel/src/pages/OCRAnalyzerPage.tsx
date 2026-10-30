@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { mergeDraft, usePersistDraft } from '../utils/useFormDraft';
 import api from '../services/api';
 import { OcrValidationViewer } from '../components/ocr/OcrValidationViewer';
 import { useAuth } from '../context/AuthContext';
@@ -21,14 +23,22 @@ export const OCRAnalyzerPage: React.FC = () => {
   const toast = useToast();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'DIRECTOR';
 
-  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const ocrDefaults = { selectedProjectId: '', mapName: '', ocrResult: null as any };
+  const [ocrBoot] = useState(() => mergeDraft('hs-admin-ocr', ocrDefaults));
+  const [ocrDraftRestored, setOcrDraftRestored] = useState(ocrBoot.restored);
+  const [step, setStep] = useState<0 | 1 | 2>(ocrBoot.value.ocrResult ? 2 : 0);
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [mapName, setMapName] = useState<string>('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(ocrBoot.value.selectedProjectId);
+  const [mapName, setMapName] = useState<string>(ocrBoot.value.mapName);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [ocrResult, setOcrResult] = useState<any>(ocrBoot.value.ocrResult);
+  const clearOcrDraft = usePersistDraft('hs-admin-ocr', {
+    selectedProjectId,
+    mapName,
+    ocrResult: step === 1 ? null : ocrResult,
+  }, ocrDefaults);
   const [statusMsg, setStatusMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,7 +48,7 @@ export const OCRAnalyzerPage: React.FC = () => {
         .then((r) => {
           const data = r.data || [];
           setProjects(data);
-          if (data.length > 0) {
+          if (data.length > 0 && !ocrBoot.value.selectedProjectId) {
             setSelectedProjectId(data[0]._id);
             setMapName(`${data[0].name} — Naksha Layout`);
           }
@@ -135,6 +145,9 @@ export const OCRAnalyzerPage: React.FC = () => {
   };
 
   const handleReset = () => {
+    clearOcrDraft();
+    setOcrDraftRestored(false);
+    setOcrResult(null);
     setStep(0);
     setFile(null);
     setPreviewUrl(null);
@@ -167,6 +180,16 @@ export const OCRAnalyzerPage: React.FC = () => {
           Upload any site layout image — AI will extract all plot numbers, sizes and boundaries automatically.
         </p>
       </div>
+      {ocrDraftRestored && (
+        <DraftNotice onDiscard={() => {
+          clearOcrDraft();
+          setSelectedProjectId('');
+          setMapName('');
+          setOcrResult(null);
+          setStep(0);
+          setOcrDraftRestored(false);
+        }} />
+      )}
 
       {/* Step Indicator */}
       <div className="flex items-center gap-0">

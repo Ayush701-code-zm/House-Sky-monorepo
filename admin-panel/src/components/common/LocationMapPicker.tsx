@@ -1,27 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { MapPin, Search, X } from 'lucide-react';
 
-// Vite breaks Leaflet's default icon paths — point at CDN assets.
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-const INDIA_CENTER: [number, number] = [22.9734, 78.6569];
+const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
 const DEFAULT_ZOOM = 5;
-const PIN_ZOOM = 15;
-const STREET_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const SATELLITE_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-const SATELLITE_MAX_ZOOM = 18;
-const STREET_MAX_ZOOM = 19;
+const PIN_ZOOM = 16;
+const MAPS_KEY = String((import.meta as { env?: { VITE_GOOGLE_MAPS_API_KEY?: string } }).env?.VITE_GOOGLE_MAPS_API_KEY || '');
+
+let mapsReady: Promise<void> | null = null;
+
+function loadGoogleMaps(apiKey: string): Promise<void> {
+  if (window.google?.maps?.Map) return Promise.resolve();
+  if (mapsReady) return mapsReady;
+  mapsReady = new Promise((resolve, reject) => {
+    const callback = 'hsInitGoogleMapsAdmin';
+    const host = window as unknown as Record<string, (() => void) | undefined>;
+    host[callback] = () => {
+      delete host[callback];
+      resolve();
+    };
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&callback=${callback}`;
+    script.async = true;
+    script.onerror = () => {
+      mapsReady = null;
+      delete host[callback];
+      reject(new Error('Google Maps failed to load'));
+    };
+    document.head.appendChild(script);
+  });
+  return mapsReady;
+}
 
 export type LatLngValue = {
   latitude: number | null;
@@ -52,175 +60,150 @@ export default function LocationMapPicker({
   className = ''
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
-  const streetLayerRef = useRef<L.TileLayer | null>(null);
-  const satelliteLayerRef = useRef<L.TileLayer | null>(null);
-  const [basemap, setBasemap] = useState<'map' | 'satellite'>('map');
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [mapError, setMapError] = useState('');
 
-  const setPin = (lat: number, lng: number, fly = true) => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-    } else {
-      markerRef.current = L.marker([lat, lng], { draggable: true }).addTo(map);
-      markerRef.current.on('dragend', () => {
-        const pos = markerRef.current?.getLatLng();
-        if (!pos) return;
-        const derived = mapsFromLatLng(pos.lat, pos.lng);
-        onChangeRef.current({
-          latitude: Number(pos.lat.toFixed(6)),
-          longitude: Number(pos.lng.toFixed(6)),
-          ...derived
-        });
-      });
-    }
-
-    if (fly) map.setView([lat, lng], Math.max(map.getZoom(), PIN_ZOOM));
-    const derived = mapsFromLatLng(lat, lng);
+  const emit = (lat: number, lng: number) => {
     onChangeRef.current({
       latitude: Number(lat.toFixed(6)),
       longitude: Number(lng.toFixed(6)),
-      ...derived
+      ...mapsFromLatLng(lat, lng)
     });
   };
 
-  const clearPin = () => {
-    if (markerRef.current && mapRef.current) {
-      mapRef.current.removeLayer(markerRef.current);
-      markerRef.current = null;
+  const placeMarker = (lat: number, lng: number, fly = true) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (markerRef.current) {
+      markerRef.current.setPosition({ lat, lng });
+    } else {
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        draggable: true
+      });
+      marker.addListener('dragend', () => {
+        const pos = marker.getPosition();
+        if (!pos) return;
+        emit(pos.lat(), pos.lng());
+      });
+      markerRef.current = marker;
     }
+    if (fly) {
+      map.panTo({ lat, lng });
+      map.setZoom(Math.max(map.getZoom() || PIN_ZOOM, PIN_ZOOM));
+    }
+    emit(lat, lng);
+  };
+
+  const clearPin = () => {
+    markerRef.current?.setMap(null);
+    markerRef.current = null;
     onChangeRef.current({ latitude: null, longitude: null, googleMapsUrl: '', mapEmbedUrl: '' });
   };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-
-    const hasPin = latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude);
-    const map = L.map(containerRef.current, {
-      center: hasPin ? [latitude!, longitude!] : INDIA_CENTER,
-      zoom: hasPin ? PIN_ZOOM : DEFAULT_ZOOM,
-      maxZoom: STREET_MAX_ZOOM,
-      scrollWheelZoom: true
-    });
-
-    streetLayerRef.current = L.tileLayer(STREET_TILES, {
-      attribution: '&copy; OpenStreetMap',
-      maxZoom: STREET_MAX_ZOOM
-    }).addTo(map);
-    satelliteLayerRef.current = L.tileLayer(SATELLITE_TILES, {
-      attribution: 'Tiles &copy; Esri',
-      maxZoom: SATELLITE_MAX_ZOOM,
-      maxNativeZoom: SATELLITE_MAX_ZOOM
-    });
-
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      setPin(e.latlng.lat, e.latlng.lng, false);
-    });
-
-    mapRef.current = map;
-
-    if (hasPin) {
-      markerRef.current = L.marker([latitude!, longitude!], { draggable: true }).addTo(map);
-      markerRef.current.on('dragend', () => {
-        const pos = markerRef.current?.getLatLng();
-        if (!pos) return;
-        const derived = mapsFromLatLng(pos.lat, pos.lng);
-        onChangeRef.current({
-          latitude: Number(pos.lat.toFixed(6)),
-          longitude: Number(pos.lng.toFixed(6)),
-          ...derived
-        });
-      });
+    if (!MAPS_KEY) {
+      setMapError('Google Maps key is missing from admin-panel/.env');
+      return;
     }
+    let cancelled = false;
+    const host = window as Window & { gm_authFailure?: () => void };
+    const previousAuthFailure = host.gm_authFailure;
+    host.gm_authFailure = () => {
+      setMapError('Google rejected the Maps key. Enable Maps JavaScript API and allow this site on the key.');
+    };
+    const hasPin = latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude);
 
-    // Leaflet needs a layout pass when mounted inside modals.
-    setTimeout(() => map.invalidateSize(), 80);
+    loadGoogleMaps(MAPS_KEY)
+      .then(() => {
+        if (cancelled || !containerRef.current || mapRef.current) return;
+        const map = new google.maps.Map(containerRef.current, {
+          center: hasPin ? { lat: latitude as number, lng: longitude as number } : INDIA_CENTER,
+          zoom: hasPin ? PIN_ZOOM : DEFAULT_ZOOM,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          zoomControl: true,
+          scaleControl: true,
+          rotateControl: true,
+          clickableIcons: true,
+          gestureHandling: 'greedy'
+        });
+        map.addListener('click', (event: google.maps.MapMouseEvent) => {
+          if (!event.latLng) return;
+          placeMarker(event.latLng.lat(), event.latLng.lng(), false);
+        });
+        mapRef.current = map;
+        if (hasPin) placeMarker(latitude as number, longitude as number, false);
+        window.setTimeout(() => google.maps.event.trigger(map, 'resize'), 120);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setMapError(err.message || 'Google Maps failed to load');
+      });
 
     return () => {
-      map.remove();
+      cancelled = true;
+      host.gm_authFailure = previousAuthFailure;
+      if (mapRef.current) google.maps.event.clearInstanceListeners(mapRef.current);
+      markerRef.current?.setMap(null);
       mapRef.current = null;
       markerRef.current = null;
-      streetLayerRef.current = null;
-      satelliteLayerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- init once; props synced below
+    // Mount once. Later pin changes are applied below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync external lat/lng into an already-mounted map (edit forms).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude)) {
-      if (markerRef.current) {
-        markerRef.current.setLatLng([latitude, longitude]);
-      } else {
-        markerRef.current = L.marker([latitude, longitude], { draggable: true }).addTo(map);
-        markerRef.current.on('dragend', () => {
-          const pos = markerRef.current?.getLatLng();
-          if (!pos) return;
-          const derived = mapsFromLatLng(pos.lat, pos.lng);
-          onChangeRef.current({
-            latitude: Number(pos.lat.toFixed(6)),
-            longitude: Number(pos.lng.toFixed(6)),
-            ...derived
-          });
-        });
-      }
-      map.setView([latitude, longitude], Math.max(map.getZoom(), PIN_ZOOM));
-    }
-  }, [latitude, longitude]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const street = streetLayerRef.current;
-    const satellite = satelliteLayerRef.current;
-    if (!map || !street || !satellite) return;
-    const cap = basemap === 'satellite' ? SATELLITE_MAX_ZOOM : STREET_MAX_ZOOM;
-    map.setMaxZoom(cap);
-    if (map.getZoom() > cap) map.setZoom(cap);
-    if (basemap === 'satellite') {
-      if (map.hasLayer(street)) map.removeLayer(street);
-      if (!map.hasLayer(satellite)) satellite.addTo(map);
+    if (latitude == null || longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    if (markerRef.current) {
+      markerRef.current.setPosition({ lat: latitude, lng: longitude });
     } else {
-      if (map.hasLayer(satellite)) map.removeLayer(satellite);
-      if (!map.hasLayer(street)) street.addTo(map);
+      const marker = new google.maps.Marker({
+        position: { lat: latitude, lng: longitude },
+        map,
+        draggable: true
+      });
+      marker.addListener('dragend', () => {
+        const pos = marker.getPosition();
+        if (!pos) return;
+        emit(pos.lat(), pos.lng());
+      });
+      markerRef.current = marker;
     }
-  }, [basemap]);
+    map.panTo({ lat: latitude, lng: longitude });
+    if ((map.getZoom() || 0) < PIN_ZOOM) map.setZoom(PIN_ZOOM);
+  }, [latitude, longitude]);
 
   const runSearch = async () => {
     const q = search.trim();
-    if (!q) return;
+    if (!q || !mapRef.current) return;
     setSearching(true);
     setSearchError('');
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        setSearchError('No location found. Try a more specific address.');
-        return;
-      }
-      const lat = Number(data[0].lat);
-      const lng = Number(data[0].lon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        setSearchError('Invalid search result.');
-        return;
-      }
-      setPin(lat, lng, true);
-    } catch {
-      setSearchError('Search failed. Check your network and try again.');
-    } finally {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: q, region: 'in' }, (results, status) => {
       setSearching(false);
-    }
+      if (status === 'OK' && results && results[0]?.geometry?.location) {
+        const loc = results[0].geometry.location;
+        placeMarker(loc.lat(), loc.lng(), true);
+        return;
+      }
+      if (status === 'REQUEST_DENIED') {
+        setSearchError('Turn on the Geocoding API for this key in Google Cloud, then search again.');
+        return;
+      }
+      setSearchError('No location found. Try a more specific address.');
+    });
   };
 
   const hasPin = latitude != null && longitude != null;
@@ -266,27 +249,16 @@ export default function LocationMapPicker({
       <p className="text-[10px] text-[#171A18]/50 font-medium">Click the map or drag the marker to set the pin. This location shows on the public website.</p>
 
       <div className="relative">
-        <div className="absolute top-2 right-2 z-[500] flex overflow-hidden rounded-lg border border-[#0B4F3C]/20 bg-white shadow-md">
-          <button
-            type="button"
-            onClick={() => setBasemap('map')}
-            className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${basemap === 'map' ? 'bg-[#0B4F3C] text-white' : 'text-[#171A18]'}`}
-          >
-            Map
-          </button>
-          <button
-            type="button"
-            onClick={() => setBasemap('satellite')}
-            className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${basemap === 'satellite' ? 'bg-[#0B4F3C] text-white' : 'text-[#171A18]'}`}
-          >
-            Satellite
-          </button>
-        </div>
         <div
           ref={containerRef}
           className="w-full rounded-xl overflow-hidden border border-[#0B4F3C]/20 z-0"
           style={{ height }}
         />
+        {mapError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/95 px-6 text-center text-xs font-semibold text-[#171A18]">
+            {mapError}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-[#171A18]/70">

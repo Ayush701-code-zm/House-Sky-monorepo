@@ -11,6 +11,10 @@ import {
   Navigation, ArrowUpRight
 } from 'lucide-react'
 import { getApiBaseUrl } from '@/utils/api'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { useClientDraft } from '@/utils/useFormDraft'
+
+const PROJECT_INQUIRY_DEFAULTS = { name: '', phone: '', email: '', message: '' }
 import { NakshaDotMap } from '@/components/real-estate/NakshaDotMap'
 import { PlotStatusGrid } from '@/components/real-estate/PlotStatusGrid'
 import dynamic from 'next/dynamic'
@@ -54,7 +58,13 @@ export default function ProjectDetailsPage() {
   const [statusFilter, setStatusFilter] = React.useState('ALL')
   const [searchQuery, setSearchQuery] = React.useState('')
   const [selectedPlot, setSelectedPlot] = React.useState<any | null>(null)
-  const [formData, setFormData] = React.useState({ name: '', phone: '', email: '', message: '' })
+  const projectInquiryKey = `hs-public-project-inquiry-${projectId || 'unknown'}`
+  const projectInquiryDraft = useClientDraft(projectInquiryKey, PROJECT_INQUIRY_DEFAULTS)
+  const formData = projectInquiryDraft.value
+  const setFormData = projectInquiryDraft.setValue
+  const inquiryDraftRestored = projectInquiryDraft.restored
+  const setInquiryDraftRestored = projectInquiryDraft.setRestored
+  const clearProjectInquiryDraft = projectInquiryDraft.clear
   const [formStatus, setFormStatus] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
 
   const fetchProjectDetails = async (silent = false) => {
@@ -135,8 +145,10 @@ export default function ProjectDetailsPage() {
         body: JSON.stringify(payload)
       })
       if (!res.ok) throw new Error('Inquiry submission failed')
+      clearProjectInquiryDraft()
+      setInquiryDraftRestored(false)
       setFormStatus('success')
-      setFormData({ name: '', phone: '', email: '', message: '' })
+      setFormData(PROJECT_INQUIRY_DEFAULTS)
       setTimeout(() => { setFormStatus('idle'); setSelectedPlot(null) }, 4000)
     } catch {
       setFormStatus('error')
@@ -506,6 +518,13 @@ export default function ProjectDetailsPage() {
                   </div>
                 ) : (
                   <form onSubmit={handleInquiry} noValidate className="space-y-4 mt-4">
+                    {inquiryDraftRestored && (
+                      <DraftNotice onDiscard={() => {
+                        clearProjectInquiryDraft()
+                        setFormData(PROJECT_INQUIRY_DEFAULTS)
+                        setInquiryDraftRestored(false)
+                      }} />
+                    )}
                     <div className="space-y-1.5">
                       <label htmlFor="sidebar-name" className="hs-label sr-only">Your Full Name <span className="hs-required">*</span></label>
                       <input id="sidebar-name" required type="text" placeholder="Your Full Name" value={formData.name}

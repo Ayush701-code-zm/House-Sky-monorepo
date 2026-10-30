@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { UserPlus } from 'lucide-react';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { mergeDraft, usePersistDraft } from '../utils/useFormDraft';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -12,10 +14,15 @@ export const JoinAgentPage: React.FC = () => {
   const [employeeCode, setEmployeeCode] = useState('');
   const [isLoadingSponsor, setIsLoadingSponsor] = useState(true);
   const [sponsorError, setSponsorError] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const joinDefaults = { fullName: '', email: '', phone: '' };
+  const joinKey = `hs-admin-join-${inviteCode || 'new'}`;
+  const [joinBoot] = useState(() => mergeDraft(joinKey, joinDefaults));
+  const [draftRestored, setDraftRestored] = useState(joinBoot.restored);
+  const [fullName, setFullName] = useState(joinBoot.value.fullName);
+  const [email, setEmail] = useState(joinBoot.value.email);
+  const [phone, setPhone] = useState(joinBoot.value.phone);
   const [password, setPassword] = useState('');
+  const clearJoinDraft = usePersistDraft(joinKey, { fullName, email, phone }, joinDefaults);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -53,6 +60,8 @@ export const JoinAgentPage: React.FC = () => {
         password,
         inviteCode
       });
+      clearJoinDraft();
+      setDraftRestored(false);
       setSuccess(res.data?.message || 'Account created. Wait for admin approval, then login.');
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Could not create the account.');
@@ -96,6 +105,16 @@ export const JoinAgentPage: React.FC = () => {
             </Link>
           </div>
         ) : (
+          <>
+          {draftRestored && (
+            <DraftNotice onDiscard={() => {
+              clearJoinDraft();
+              setFullName('');
+              setEmail('');
+              setPhone('');
+              setDraftRestored(false);
+            }} />
+          )}
           <form onSubmit={handleSubmit} className="space-y-3 text-xs">
             <label className="block space-y-1">
               <span className="font-bold text-[#171A18]/70">Full name</span>
@@ -122,6 +141,7 @@ export const JoinAgentPage: React.FC = () => {
               Already have an account? <Link to="/login" className="font-bold text-[#0B4F3C]">Login</Link>
             </p>
           </form>
+          </>
         )}
       </div>
     </div>

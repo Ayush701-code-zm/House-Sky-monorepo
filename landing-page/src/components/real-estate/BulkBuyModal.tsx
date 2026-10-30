@@ -3,6 +3,10 @@
 import * as React from 'react'
 import { X, Building2 } from 'lucide-react'
 import { getApiBaseUrl } from '@/utils/api'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { mergeDraft, usePersistDraft } from '@/utils/useFormDraft'
+
+const BULK_BUY_KEY = 'hs-public-bulk-buy'
 
 const MIN_BULK_UNITS = 2
 const DEFAULT_UNIT_COUNT = 2
@@ -49,21 +53,33 @@ const EMPTY_FORM = {
 
 export function BulkBuyModal({ isOpen, onClose, context }: BulkBuyModalProps) {
   const [form, setForm] = React.useState(EMPTY_FORM)
+  const [seed, setSeed] = React.useState(EMPTY_FORM)
+  const [draftRestored, setDraftRestored] = React.useState(false)
+  const [draftReady, setDraftReady] = React.useState(false)
   const [status, setStatus] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = React.useState('')
+  const clearBulkDraft = usePersistDraft(BULK_BUY_KEY, form, seed, isOpen && draftReady)
 
   React.useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      setDraftReady(false)
+      return
+    }
     setStatus('idle')
     setErrorMessage('')
-    setForm({
+    const seeded = {
       ...EMPTY_FORM,
       city: context?.city || '',
       propertyType: context?.propertyType || '',
       message: context?.propertyTitle
         ? `Interested in bulk purchase related to ${context.propertyTitle}.`
         : '',
-    })
+    }
+    const saved = mergeDraft(BULK_BUY_KEY, seeded)
+    setSeed(seeded)
+    setForm(saved.value)
+    setDraftRestored(saved.restored)
+    setDraftReady(true)
   }, [isOpen, context?.city, context?.propertyType, context?.propertyTitle])
 
   if (!isOpen) return null
@@ -100,6 +116,8 @@ export function BulkBuyModal({ isOpen, onClose, context }: BulkBuyModalProps) {
         setStatus('error')
         return
       }
+      clearBulkDraft()
+      setDraftRestored(false)
       setStatus('success')
     } catch {
       setErrorMessage('Network error. Please try again.')
@@ -156,6 +174,14 @@ export function BulkBuyModal({ isOpen, onClose, context }: BulkBuyModalProps) {
             </button>
           </div>
         ) : (
+          <>
+          {draftRestored && (
+            <DraftNotice onDiscard={() => {
+              clearBulkDraft()
+              setForm(seed)
+              setDraftRestored(false)
+            }} />
+          )}
           <form onSubmit={handleSubmit} className="space-y-3 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label htmlFor="bulk-buy-name" className="block space-y-1.5">
@@ -265,6 +291,7 @@ export function BulkBuyModal({ isOpen, onClose, context }: BulkBuyModalProps) {
               {status === 'submitting' ? 'Sending…' : 'Request a callback'}
             </button>
           </form>
+          </>
         )}
       </div>
     </div>

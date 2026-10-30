@@ -3,6 +3,18 @@
 import * as React from 'react'
 import { ShieldCheck, CheckCircle2 } from 'lucide-react'
 import { getApiBaseUrl } from '@/utils/api'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { useClientDraft } from '@/utils/useFormDraft'
+
+const INQUIRY_DEFAULTS = {
+  fullName: '',
+  email: '',
+  phone: '',
+  inquiryType: 'CUSTOMER_VIEWING',
+  preferredDate: '',
+  preferredTime: 'Morning (10 AM - 1 PM)',
+  message: '',
+}
 
 interface InquiryFormProps {
   propertyTitle?: string
@@ -15,19 +27,16 @@ export function InquiryForm({
   agentName = 'Senior Advisory Desk',
   className = '',
 }: InquiryFormProps) {
+  const inquiryKey = `hs-public-inquiry-${propertyTitle || 'general'}`
+  const inquiryDraft = useClientDraft(inquiryKey, INQUIRY_DEFAULTS)
+  const formData = inquiryDraft.value
+  const setFormData = inquiryDraft.setValue
+  const draftRestored = inquiryDraft.restored
+  const setDraftRestored = inquiryDraft.setRestored
+  const clearInquiryDraft = inquiryDraft.clear
   const [submitted, setSubmitted] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [statusMessage, setStatusMessage] = React.useState('')
-
-  const [formData, setFormData] = React.useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    inquiryType: 'CUSTOMER_VIEWING',
-    preferredDate: '',
-    preferredTime: 'Morning (10 AM - 1 PM)',
-    message: '',
-  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,6 +77,9 @@ export function InquiryForm({
         return
       }
 
+      clearInquiryDraft()
+      setDraftRestored(false)
+      setFormData(INQUIRY_DEFAULTS)
       setStatusMessage(data.message || 'Viewing request submitted. Our advisor will contact you shortly.')
       setSubmitted(true)
     } catch (err) {
@@ -119,6 +131,13 @@ export function InquiryForm({
         )}
       </div>
 
+      {draftRestored && (
+        <DraftNotice onDiscard={() => {
+          clearInquiryDraft()
+          setFormData(INQUIRY_DEFAULTS)
+          setDraftRestored(false)
+        }} />
+      )}
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {/* Full Name */}
         <div className="space-y-1.5">

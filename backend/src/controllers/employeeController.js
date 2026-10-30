@@ -2,7 +2,8 @@ const Employee = require('../models/Employee');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { calculateEmployeeSalesMetrics, evaluateAndUpgradeRank, getDownlineEmployeeIds } = require('../services/mlmEngine');
-const { ensureInviteCode, findOrCreateSponsorEmployee, resolveSponsorByInviteCode, publicSponsorPayload, generateEmployeeCode } = require('../utils/agentInvite');
+const { ensureInviteCode, findOrCreateSponsorEmployee, resolveSponsorByInviteCode, resolveSponsorByEmployeeCode, publicSponsorPayload, publicSponsorLookupPayload, generateEmployeeCode, findUserByPhone } = require('../utils/agentInvite');
+const { queryString, containsRegex } = require('../utils/queryUtils');
 
 const FULL_ACCESS_ROLES = ['ADMIN', 'DIRECTOR'];
 const SENSITIVE_USER_FIELDS = ['password', 'verificationToken', 'verificationTokenExpires', 'resetPasswordToken', 'resetPasswordExpires'];
@@ -38,14 +39,27 @@ exports.getEmployees = async (req, res, next) => {
       filter = { _id: { $in: allowedIds } };
     }
 
-    const employees = await Employee.find(filter)
+    const search = queryString(req.query.search);
+    const searchTerm = search ? search.trim().slice(0, 80) : '';
+    if (searchTerm) {
+      const nameMatches = await User.find({ fullName: containsRegex(searchTerm) }).select('_id').limit(40);
+      const or = [{ employeeCode: containsRegex(searchTerm) }];
+      if (nameMatches.length) {
+        or.push({ userId: { $in: nameMatches.map((user) => user._id) } });
+      }
+      filter = Object.keys(filter).length ? { $and: [filter, { $or: or }] } : { $or: or };
+    }
+
+    let employeeQuery = Employee.find(filter)
       .populate('userId', 'fullName email phone role avatar approvalStatus isActive')
       .populate({
         path: 'parentId',
         populate: { path: 'userId', select: 'fullName' }
       })
       .sort({ createdAt: -1 });
+    if (searchTerm) employeeQuery = employeeQuery.limit(8);
 
+    const employees = await employeeQuery;
     res.json(employees);
   } catch (error) {
     next(error);
@@ -59,6 +73,9 @@ exports.createEmployee = async (req, res, next) => {
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({ message: 'User with this email already exists' });
+    }
+    if (phone && await findUserByPhone(phone)) {
+      return res.status(400).json({ message: 'An account with this mobile number already exists' });
     }
 
     const isAdmin = req.user && ['ADMIN', 'DIRECTOR'].includes(req.user.role);
@@ -228,7 +245,10 @@ exports.getEmployeeById = async (req, res, next) => {
   try {
     const employee = await Employee.findById(req.params.id)
       .populate('userId', 'fullName email phone role avatar approvalStatus isActive')
-      .populate('parentId');
+      .populate({
+        path: 'parentId',
+        populate: { path: 'userId', select: 'fullName' }
+      });
 
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
@@ -323,6 +343,22 @@ exports.getMyInviteLink = async (req, res, next) => {
       inviteCode,
       ...publicSponsorPayload({ ...employee.toObject(), inviteCode })
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.lookupPublicSponsor = async (req, res, next) => {
+  try {
+    const code = queryString(req.query.code);
+    if (!code || !code.trim()) {
+      return res.status(400).json({ message: 'A sponsor ID is required.' });
+    }
+    const sponsor = await resolveSponsorByEmployeeCode(code);
+    if (!sponsor) {
+      return res.status(404).json({ message: 'Sponsor ID not found.' });
+    }
+    res.json(publicSponsorLookupPayload(sponsor));
   } catch (error) {
     next(error);
   }

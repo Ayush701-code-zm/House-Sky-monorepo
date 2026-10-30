@@ -4,6 +4,8 @@ import * as React from 'react'
 import Image from 'next/image'
 import { SectionHeading } from '@/components/real-estate/SectionHeading'
 import { getApiBaseUrl } from '@/utils/api'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { mergeDraft, usePersistDraft } from '@/utils/useFormDraft'
 import { scrollToSection } from '@/utils/scroll'
 import { FALLBACK_IMAGE, SITE } from '@/utils/siteConfig'
 import {
@@ -91,6 +93,10 @@ export default function BulkDealsPage() {
     budgetRange: '₹50 Lakhs - ₹1 Crore',
     message: ''
   })
+  const [requestBaseline, setRequestBaseline] = React.useState(requestForm)
+  const [requestDraftRestored, setRequestDraftRestored] = React.useState(false)
+  const requestKey = selectedDeal?._id ? `hs-public-bulk-request-${selectedDeal._id}` : 'hs-public-bulk-request-none'
+  const clearRequestDraft = usePersistDraft(requestKey, requestForm, requestBaseline, Boolean(selectedDeal))
 
   // Fetch unique bulk deal location options from backend API
   React.useEffect(() => {
@@ -193,7 +199,7 @@ export default function BulkDealsPage() {
   const handleOpenModal = (deal: PublicBulkDeal) => {
     setSelectedDeal(deal)
     setIsSubmitted(false)
-    setRequestForm({
+    const base = {
       name: '',
       phone: '',
       email: '',
@@ -202,7 +208,11 @@ export default function BulkDealsPage() {
       unitCount: deal.minQuantity ? deal.minQuantity.split(' ')[0] : '5',
       budgetRange: '₹50 Lakhs - ₹1 Crore',
       message: ''
-    })
+    }
+    const saved = mergeDraft(`hs-public-bulk-request-${deal._id}`, base)
+    setRequestBaseline(base)
+    setRequestForm(saved.value)
+    setRequestDraftRestored(saved.restored)
   }
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -228,6 +238,8 @@ export default function BulkDealsPage() {
       })
 
       if (res.ok) {
+        clearRequestDraft()
+        setRequestDraftRestored(false)
         setIsSubmitted(true)
       } else {
         alert('Failed to submit request. Please try again or call our bulk deal desk directly.')
@@ -807,6 +819,13 @@ export default function BulkDealsPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmitRequest} className="space-y-4">
+                  {requestDraftRestored && (
+                    <DraftNotice onDiscard={() => {
+                      clearRequestDraft()
+                      setRequestForm(requestBaseline)
+                      setRequestDraftRestored(false)
+                    }} />
+                  )}
                   {/* Deal summary mini pill */}
                   <div className="bg-neutral-950 p-3 rounded-2xl border border-white/10 flex items-center justify-between text-xs">
                     <div>

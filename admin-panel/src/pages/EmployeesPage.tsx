@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { Employee, RANKS } from '../types';
 import { AddEmployeeModal } from '../components/employees/AddEmployeeModal';
+import { SponsorSearchField } from '../components/employees/SponsorSearchField';
 import { InviteLinkCard } from '../components/employees/InviteLinkCard';
 import { AgentProfileModal } from '../components/employees/AgentProfileModal';
 import { TableSkeleton } from '../components/common/Skeleton';
@@ -457,20 +458,13 @@ export const EmployeesPage: React.FC = () => {
               {approveFor.parentId ? ' Their invite sponsor is already selected and can be changed.' : ''}
             </p>
             <label className="text-[#171A18]/70 font-semibold block text-xs">Sponsorship</label>
-            <select
+            <SponsorSearchField
+              key={employeeKey(approveFor)}
               value={sponsorId}
-              onChange={(e) => setSponsorId(e.target.value)}
-              className="w-full bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]"
-            >
-              <option value="">Select a sponsoring agent</option>
-              {employees
-                .filter((emp) => employeeKey(emp) && employeeKey(emp) !== employeeKey(approveFor))
-                .map((emp) => (
-                  <option key={employeeKey(emp)} value={employeeKey(emp)}>
-                    {emp.userId?.fullName || emp.employeeCode} ({emp.employeeCode})
-                  </option>
-                ))}
-            </select>
+              onChange={setSponsorId}
+              excludeId={employeeKey(approveFor)}
+              inputId="approve-sponsor"
+            />
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setApproveFor(null)} className="px-4 py-2.5 rounded-xl border border-[#0B4F3C]/20 text-xs font-bold cursor-pointer">Cancel</button>
               <button type="button" disabled={approving || !sponsorId} onClick={confirmApprove} className="px-5 py-2.5 rounded-xl bg-[#0B4F3C] text-white text-xs font-bold disabled:opacity-60 cursor-pointer">
@@ -484,7 +478,6 @@ export const EmployeesPage: React.FC = () => {
       {selectedAgentId && (
         <AgentProfileModal
           employeeId={selectedAgentId}
-          allEmployees={employees}
           onClose={() => setSelectedAgentId(null)}
           onSuccess={fetchEmployees}
         />

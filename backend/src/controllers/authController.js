@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { JWT_SECRET, JWT_EXPIRE } = require('../config/jwt');
-const { resolveSponsorByInviteCode, generateEmployeeCode } = require('../utils/agentInvite');
+const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone } = require('../utils/agentInvite');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 const generateToken = (user) => {
@@ -27,6 +27,9 @@ exports.register = async (req, res, next) => {
     let user = await User.findOne({ email: email.toLowerCase().trim() });
     if (user) {
       return res.status(400).json({ message: 'User with this email already exists' });
+    }
+    if (phone && await findUserByPhone(phone)) {
+      return res.status(400).json({ message: 'An account with this mobile number already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -106,23 +109,24 @@ exports.register = async (req, res, next) => {
 // 2. Public Agent Application Registration
 exports.registerPublicAgent = async (req, res, next) => {
   try {
-    const { email, password, fullName, phone, inviteCode } = req.body;
+    const { email, password, fullName, phone, inviteCode, sponsorCode } = req.body;
 
     if (!email || !password || !fullName || !phone) {
       return res.status(400).json({ message: 'Full name, email, phone, and password are required' });
     }
 
-    let sponsor = null;
-    if (inviteCode) {
-      sponsor = await resolveSponsorByInviteCode(inviteCode);
-      if (!sponsor) {
-        return res.status(400).json({ message: 'This invite link is invalid. Ask your sponsor for a fresh link.' });
-      }
+    const sponsorResult = await resolvePublicSponsor({ sponsorCode, inviteCode });
+    if (!sponsorResult.sponsor) {
+      return res.status(400).json({ message: sponsorResult.message });
     }
+    const sponsor = sponsorResult.sponsor;
 
     let user = await User.findOne({ email: email.toLowerCase().trim() });
     if (user) {
       return res.status(400).json({ message: 'An account with this email already exists' });
+    }
+    if (await findUserByPhone(phone)) {
+      return res.status(400).json({ message: 'An account with this mobile number already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -143,13 +147,15 @@ exports.registerPublicAgent = async (req, res, next) => {
       verificationTokenExpires: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
+    let employeeCode = '';
     try {
+      employeeCode = await generateEmployeeCode();
       await Employee.create({
         userId: user._id,
-        employeeCode: await generateEmployeeCode(),
+        employeeCode,
         joiningDate: new Date(),
         currentRank: 'Business Executive',
-        parentId: sponsor ? sponsor._id : null
+        parentId: sponsor._id
       });
     } catch (err) {
       // Don't leave an orphan user that blocks this email from re-registering.
@@ -169,6 +175,7 @@ exports.registerPublicAgent = async (req, res, next) => {
 
     res.status(201).json({
       message: '🎉 Agent application submitted! Check your email to verify your address. Account activation is subject to Admin approval.',
+      employeeCode,
       user: {
         id: user._id,
         fullName: user.fullName,
@@ -494,6 +501,9 @@ exports.registerPropertyOwner = async (req, res, next) => {
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) {
       return res.status(400).json({ message: 'An account with this email already exists. Please login.' });
+    }
+    if (await findUserByPhone(phone)) {
+      return res.status(400).json({ message: 'An account with this mobile number already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);

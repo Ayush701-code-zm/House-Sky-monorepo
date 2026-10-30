@@ -2,16 +2,6 @@
 
 import * as React from 'react'
 
-// Leaflet touches `window` at import time — load only in the browser.
-let L: typeof import('leaflet') | null = null
-async function loadLeaflet() {
-  if (L) return L
-  const mod = await import('leaflet')
-  await import('leaflet/dist/leaflet.css')
-  L = mod
-  return mod
-}
-
 type Props = {
   latitude: number
   longitude: number
@@ -21,121 +11,109 @@ type Props = {
 }
 
 /**
- * Read-only map showing the admin-placed pin for a project or property.
+ * Read-only Google Map for a project or property pin.
+ * Key lives in landing-page/.env as NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.
+ * Copy that line into the production server env before the production build.
  */
-const STREET_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-const SATELLITE_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-/** Esri returns a "Map data not yet available" tile past this level for this region. */
-const SATELLITE_MAX_ZOOM = 18
-const STREET_MAX_ZOOM = 19
+const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 
-export function LocationMap({ latitude, longitude, title, className = '', zoom = 15 }: Props) {
+let mapsReady: Promise<void> | null = null
+
+function loadGoogleMaps(apiKey: string): Promise<void> {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Google Maps loads in the browser only'))
+  if (window.google?.maps?.Map) return Promise.resolve()
+  if (mapsReady) return mapsReady
+  mapsReady = new Promise((resolve, reject) => {
+    const callback = 'hsInitGoogleMaps'
+    const host = window as unknown as Record<string, (() => void) | undefined>
+    host[callback] = () => {
+      delete host[callback]
+      resolve()
+    }
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&callback=${callback}`
+    script.async = true
+    script.onerror = () => {
+      mapsReady = null
+      delete host[callback]
+      reject(new Error('Google Maps failed to load'))
+    }
+    document.head.appendChild(script)
+  })
+  return mapsReady
+}
+
+export function LocationMap({ latitude, longitude, title, className = '', zoom = 16 }: Props) {
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const mapRef = React.useRef<import('leaflet').Map | null>(null)
-  const layersRef = React.useRef<{ street: import('leaflet').TileLayer; satellite: import('leaflet').TileLayer } | null>(null)
-  const [basemap, setBasemap] = React.useState<'map' | 'satellite'>('map')
-  const basemapRef = React.useRef(basemap)
-  basemapRef.current = basemap
+  const [error, setError] = React.useState('')
 
   React.useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
+    if (!containerRef.current) return
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
+    if (!MAPS_KEY) {
+      setError('Google Maps key is missing from landing-page/.env')
+      return
+    }
     let cancelled = false
-    let timer: number | undefined
+    let map: google.maps.Map | null = null
+    const host = window as Window & { gm_authFailure?: () => void }
+    const previousAuthFailure = host.gm_authFailure
+    host.gm_authFailure = () => {
+      setError('Google rejected the Maps key. Enable Maps JavaScript API and allow this site on the key.')
+    }
 
-    loadLeaflet().then((leaflet) => {
-      if (cancelled || !containerRef.current || mapRef.current) return
-      const markerIcon = leaflet.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
+    loadGoogleMaps(MAPS_KEY)
+      .then(() => {
+        if (cancelled || !containerRef.current) return
+        map = new google.maps.Map(containerRef.current, {
+          center: { lat: latitude, lng: longitude },
+          zoom,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          zoomControl: true,
+          scaleControl: true,
+          rotateControl: true,
+          clickableIcons: true,
+          gestureHandling: 'greedy'
+        })
+        const marker = new google.maps.Marker({
+          position: { lat: latitude, lng: longitude },
+          map,
+          title: title || 'Location'
+        })
+        if (title) {
+          const info = new google.maps.InfoWindow({ content: title })
+          marker.addListener('click', () => info.open({ map: map!, anchor: marker }))
+        }
+        window.setTimeout(() => {
+          if (map) google.maps.event.trigger(map, 'resize')
+        }, 120)
       })
-
-      const map = leaflet.map(containerRef.current, {
-        center: [latitude, longitude],
-        zoom,
-        maxZoom: STREET_MAX_ZOOM,
-        scrollWheelZoom: false,
-        dragging: true
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message || 'Google Maps failed to load')
       })
-
-      const street = leaflet.tileLayer(STREET_TILES, {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: STREET_MAX_ZOOM
-      }).addTo(map)
-      const satellite = leaflet.tileLayer(SATELLITE_TILES, {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: SATELLITE_MAX_ZOOM,
-        maxNativeZoom: SATELLITE_MAX_ZOOM
-      })
-      layersRef.current = { street, satellite }
-      const cap = basemapRef.current === 'satellite' ? SATELLITE_MAX_ZOOM : STREET_MAX_ZOOM
-      map.setMaxZoom(cap)
-      if (basemapRef.current === 'satellite') {
-        map.removeLayer(street)
-        satellite.addTo(map)
-      }
-
-      const marker = leaflet.marker([latitude, longitude], { icon: markerIcon }).addTo(map)
-      if (title) marker.bindPopup(title)
-
-      mapRef.current = map
-      timer = window.setTimeout(() => map.invalidateSize(), 100)
-    })
 
     return () => {
       cancelled = true
-      if (timer) window.clearTimeout(timer)
-      mapRef.current?.remove()
-      mapRef.current = null
-      layersRef.current = null
+      host.gm_authFailure = previousAuthFailure
+      if (map) google.maps.event.clearInstanceListeners(map)
     }
   }, [latitude, longitude, title, zoom])
 
-  React.useEffect(() => {
-    const map = mapRef.current
-    const layers = layersRef.current
-    if (!map || !layers) return
-    const cap = basemap === 'satellite' ? SATELLITE_MAX_ZOOM : STREET_MAX_ZOOM
-    map.setMaxZoom(cap)
-    if (map.getZoom() > cap) map.setZoom(cap)
-    if (basemap === 'satellite') {
-      if (map.hasLayer(layers.street)) map.removeLayer(layers.street)
-      if (!map.hasLayer(layers.satellite)) layers.satellite.addTo(map)
-    } else {
-      if (map.hasLayer(layers.satellite)) map.removeLayer(layers.satellite)
-      if (!map.hasLayer(layers.street)) layers.street.addTo(map)
-    }
-  }, [basemap])
-
   return (
     <div className={`relative w-full h-full min-h-[240px] ${className}`}>
-      <div className="absolute top-2 right-2 z-[500] flex overflow-hidden rounded-lg border border-black/10 bg-white shadow-md">
-        <button
-          type="button"
-          onClick={() => setBasemap('map')}
-          className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${basemap === 'map' ? 'bg-brand-green text-white' : 'text-brand-charcoal'}`}
-        >
-          Map
-        </button>
-        <button
-          type="button"
-          onClick={() => setBasemap('satellite')}
-          className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${basemap === 'satellite' ? 'bg-brand-green text-white' : 'text-brand-charcoal'}`}
-        >
-          Satellite
-        </button>
-      </div>
       <div
         ref={containerRef}
         className="w-full h-full min-h-[240px]"
         role="img"
         aria-label={title ? `Map location: ${title}` : 'Map location'}
       />
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/95 px-6 text-center text-sm font-semibold text-brand-charcoal">
+          {error}
+        </div>
+      )}
     </div>
   )
 }

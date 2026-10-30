@@ -3,6 +3,9 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AreaUnitField from '../components/common/AreaUnitField';
+import { DraftNotice } from '../components/common/DraftNotice';
+import { readDraft } from '../utils/formDraft';
+import { usePersistDraft } from '../utils/useFormDraft';
 import { formatAreaSize, parseAreaSize, sqftToUnit, unitToSqft, unitTypeFor } from '../utils/areaUnits';
 import {
   Flame,
@@ -146,6 +149,15 @@ export const BulkDealsPage: React.FC = () => {
 
 
   const [customPerkInput, setCustomPerkInput] = useState('');
+  const [bulkBaseline, setBulkBaseline] = useState<Record<string, unknown> | null>(null);
+  const [bulkDraftRestored, setBulkDraftRestored] = useState(false);
+  const bulkDraftKey = editingDeal ? `hs-admin-bulk-deal-${editingDeal._id}` : 'hs-admin-bulk-deal-new';
+  const clearBulkAdminDraft = usePersistDraft(
+    bulkDraftKey,
+    { ...formData, customPerkInput },
+    bulkBaseline,
+    isModalOpen && bulkBaseline != null
+  );
 
   const fetchDeals = async () => {
     try {
@@ -185,10 +197,24 @@ export const BulkDealsPage: React.FC = () => {
     fetchOptions();
   }, [token]);
 
+  const openBulkForm = (deal: BulkDealItem | undefined, base: typeof formData) => {
+    const key = deal ? `hs-admin-bulk-deal-${deal._id}` : 'hs-admin-bulk-deal-new';
+    const saved = readDraft<typeof base & { customPerkInput?: string }>(key);
+    const perk = saved && typeof saved.customPerkInput === 'string' ? saved.customPerkInput : '';
+    const rest = saved ? { ...saved } : null;
+    if (rest) delete (rest as { customPerkInput?: string }).customPerkInput;
+    const next = rest ? { ...base, ...rest } : base;
+    setEditingDeal(deal || null);
+    setBulkBaseline({ ...base, customPerkInput: '' });
+    setFormData(next);
+    setCustomPerkInput(perk);
+    setBulkDraftRestored(JSON.stringify(next) !== JSON.stringify(base) || perk.trim() !== '');
+    setIsModalOpen(true);
+  };
+
   const handleOpenModal = (deal?: BulkDealItem) => {
     if (deal) {
-      setEditingDeal(deal);
-      setFormData({
+      openBulkForm(deal, {
         title: deal.title || '',
         dealType: deal.dealType || 'PROJECT',
         projectId: deal.projectId?._id || deal.projectId || '',
@@ -222,8 +248,7 @@ export const BulkDealsPage: React.FC = () => {
         validTill: deal.validTill ? new Date(deal.validTill).toISOString().split('T')[0] : ''
       });
     } else {
-      setEditingDeal(null);
-      setFormData({
+      openBulkForm(undefined, {
         title: '',
         dealType: 'PROJECT',
         projectId: '',
@@ -257,7 +282,6 @@ export const BulkDealsPage: React.FC = () => {
         validTill: ''
       });
     }
-    setIsModalOpen(true);
   };
 
   const handleSelectProject = (projId: string) => {
@@ -358,6 +382,8 @@ export const BulkDealsPage: React.FC = () => {
         await api.post('/admin/bulk-deals', payload);
         toast.success('Bulk deal created successfully');
       }
+      clearBulkAdminDraft();
+      setBulkDraftRestored(false);
       setIsModalOpen(false);
       fetchDeals();
     } catch (error: any) {
@@ -643,6 +669,15 @@ export const BulkDealsPage: React.FC = () => {
 
             {/* Modal Body / Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {bulkDraftRestored && bulkBaseline && (
+                <DraftNotice onDiscard={() => {
+                  clearBulkAdminDraft();
+                  const { customPerkInput: _perk, ...base } = bulkBaseline;
+                  setFormData(base as typeof formData);
+                  setCustomPerkInput('');
+                  setBulkDraftRestored(false);
+                }} />
+              )}
               {/* Deal Type & Auto-Fill Source */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

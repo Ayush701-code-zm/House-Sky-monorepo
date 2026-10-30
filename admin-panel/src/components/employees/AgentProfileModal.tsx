@@ -2,18 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { X, Award, RefreshCw, Edit3 } from 'lucide-react';
 import api from '../../services/api';
 import { Employee, RANKS } from '../../types';
+import { SponsorSearchField } from './SponsorSearchField';
 import { useToast } from '../../context/ToastContext';
+import { DraftNotice } from '../common/DraftNotice';
+import { readDraft } from '../../utils/formDraft';
+import { usePersistDraft } from '../../utils/useFormDraft';
+
+type AgentDraft = {
+  fullName: string;
+  phone: string;
+  currentRank: string;
+  parentId: string;
+  legNumber: number;
+};
 
 interface AgentProfileModalProps {
   employeeId: string;
-  allEmployees: Employee[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
   employeeId,
-  allEmployees,
   onClose,
   onSuccess
 }) => {
@@ -23,11 +33,17 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   // Editable Form Fields
+  const draftKey = `hs-admin-agent-${employeeId}`;
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [currentRank, setCurrentRank] = useState('');
   const [parentId, setParentId] = useState('');
   const [legNumber, setLegNumber] = useState<number>(1);
+  const [baseline, setBaseline] = useState<AgentDraft | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const clearAgentDraft = usePersistDraft(draftKey, {
+    fullName, phone, currentRank, parentId, legNumber,
+  }, baseline, baseline != null);
 
   useEffect(() => {
     fetchAgentDetails();
@@ -40,11 +56,22 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
       setData(res.data);
 
       const emp: Employee = res.data.employee;
-      setFullName(emp.userId?.fullName || '');
-      setPhone(emp.userId?.phone || '');
-      setCurrentRank(emp.currentRank || 'Business Executive');
-      setParentId(emp.parentId && typeof emp.parentId === 'object' ? (emp.parentId as any)._id || (emp.parentId as any).id : (emp.parentId || ''));
-      setLegNumber(emp.legNumber || 1);
+      const server: AgentDraft = {
+        fullName: emp.userId?.fullName || '',
+        phone: emp.userId?.phone || '',
+        currentRank: emp.currentRank || 'Business Executive',
+        parentId: emp.parentId && typeof emp.parentId === 'object' ? (emp.parentId as any)._id || (emp.parentId as any).id : (emp.parentId || ''),
+        legNumber: emp.legNumber || 1,
+      };
+      const saved = readDraft<AgentDraft>(draftKey);
+      const next = saved ? { ...server, ...saved } : server;
+      setFullName(next.fullName);
+      setPhone(next.phone);
+      setCurrentRank(next.currentRank);
+      setParentId(next.parentId);
+      setLegNumber(next.legNumber);
+      setBaseline(server);
+      setDraftRestored(Boolean(saved && JSON.stringify(next) !== JSON.stringify(server)));
     } catch (e) {
       console.error(e);
     } finally {
@@ -64,6 +91,7 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
         legNumber
       });
 
+      clearAgentDraft();
       toast.success('Agent profile and rank updated successfully!');
       onSuccess();
       fetchAgentDetails();
@@ -173,6 +201,18 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
         </div>
 
         {/* Agent Profile Details & Edit Form */}
+        {draftRestored && baseline && (
+          <DraftNotice onDiscard={() => {
+            clearAgentDraft();
+            setFullName(baseline.fullName);
+            setPhone(baseline.phone);
+            setCurrentRank(baseline.currentRank);
+            setParentId(baseline.parentId);
+            setLegNumber(baseline.legNumber);
+            setDraftRestored(false);
+          }} />
+        )}
+
         <form onSubmit={handleUpdate} className="space-y-4 text-xs">
           <h4 className="font-serif font-bold text-[#171A18] uppercase tracking-wider border-b border-[#0B4F3C]/15 pb-2 flex items-center gap-2">
             <Edit3 className="w-4 h-4 text-[#0B4F3C]" /> Modify Profile & MLM Rank
@@ -216,20 +256,9 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
             </div>
             <div>
               <label className="text-[#171A18]/70 font-semibold">Sponsorship</label>
-              <select
-                value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-                className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]"
-              >
-                <option value="">No sponsorship (top of network)</option>
-                {allEmployees
-                  .filter((emp) => emp.id !== employeeId)
-                  .map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.userId ? emp.userId.fullName : emp.employeeCode} ({emp.employeeCode} - {emp.currentRank})
-                    </option>
-                  ))}
-              </select>
+              <div className="mt-1">
+                <SponsorSearchField value={parentId} onChange={setParentId} allowEmpty excludeId={employeeId} inputId="agent-sponsor" />
+              </div>
             </div>
           </div>
 

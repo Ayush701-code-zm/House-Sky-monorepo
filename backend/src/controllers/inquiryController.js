@@ -6,7 +6,7 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const bcrypt = require('bcryptjs');
 const { getPresignedUrl } = require('../services/s3Service');
-const { resolveSponsorByInviteCode, generateEmployeeCode } = require('../utils/agentInvite');
+const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone } = require('../utils/agentInvite');
 const { deriveMapEmbedUrl } = require('../utils/googleMaps');
 const { notifyAdmins } = require('../services/notificationService');
 const { withFreshProjectMedia } = require('../utils/mediaHydrator');
@@ -233,24 +233,25 @@ exports.createChatbotLead = async (req, res, next) => {
 // 4. Public Agent Application Submission
 exports.createPublicAgentApplication = async (req, res, next) => {
   try {
-    const { fullName, email, phone, password, experienceYears, message, inviteCode } = req.body;
+    const { fullName, email, phone, password, experienceYears, message, inviteCode, sponsorCode } = req.body;
 
     if (!fullName || !email || !phone || !password) {
       return res.status(400).json({ message: 'Full name, email, phone number, and password are required' });
     }
     const normalizedEmail = String(email).toLowerCase().trim();
 
-    let sponsor = null;
-    if (inviteCode) {
-      sponsor = await resolveSponsorByInviteCode(inviteCode);
-      if (!sponsor) {
-        return res.status(400).json({ message: 'This invite link is invalid. Ask your sponsor for a fresh link.' });
-      }
+    const sponsorResult = await resolvePublicSponsor({ sponsorCode, inviteCode });
+    if (!sponsorResult.sponsor) {
+      return res.status(400).json({ message: sponsorResult.message });
     }
+    const sponsor = sponsorResult.sponsor;
 
     let user = await User.findOne({ email: normalizedEmail });
     if (user) {
       return res.status(400).json({ message: 'An account with this email address already exists' });
+    }
+    if (await findUserByPhone(phone)) {
+      return res.status(400).json({ message: 'An account with this mobile number already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);

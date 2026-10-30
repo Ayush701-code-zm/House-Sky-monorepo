@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { DraftNotice } from '../common/DraftNotice';
+import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
 import { X, UploadCloud, ScanText, FileImage } from 'lucide-react';
 import api from '../../services/api';
 import { Project } from '../../types';
@@ -20,16 +22,23 @@ export const UploadNaksaModal: React.FC<UploadNaksaModalProps> = ({
 }) => {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [projectId, setProjectId] = useState<string>(selectedProjectId || (projects[0]?._id || ''));
-  const [mapName, setMapName] = useState<string>(() => {
-    const p = projects.find(x => x._id === (selectedProjectId || projects[0]?._id));
-    return p ? `${p.name} — Naksha Layout` : 'Naksha Layout';
-  });
+  const defaultProjectId = selectedProjectId || (projects[0]?._id || '');
+  const defaultProject = projects.find((x) => x._id === defaultProjectId);
+  const nakshaDefaults = {
+    projectId: defaultProjectId,
+    mapName: defaultProject ? `${defaultProject.name} — Naksha Layout` : 'Naksha Layout',
+    ocrResult: null as any,
+  };
+  const [nakshaBoot] = useState(() => mergeDraft('hs-admin-naksha', nakshaDefaults));
+  const [nakshaDraftRestored, setNakshaDraftRestored] = useState(nakshaBoot.restored);
+  const [projectId, setProjectId] = useState<string>(nakshaBoot.value.projectId);
+  const [mapName, setMapName] = useState<string>(nakshaBoot.value.mapName);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [ocrResult, setOcrResult] = useState<any>(nakshaBoot.value.ocrResult);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const clearNakshaDraft = usePersistDraft('hs-admin-naksha', { projectId, mapName, ocrResult }, nakshaDefaults);
 
   const handleRunOcr = async (fileToAnalyze = file, targetProjectId = projectId) => {
     if (!targetProjectId) {
@@ -87,6 +96,8 @@ export const UploadNaksaModal: React.FC<UploadNaksaModalProps> = ({
   };
 
   const handleApproveComplete = () => {
+    clearNakshaDraft();
+    setNakshaDraftRestored(false);
     toast.success('Plots saved to database successfully!');
     onSuccess();
     onClose();
@@ -111,6 +122,18 @@ export const UploadNaksaModal: React.FC<UploadNaksaModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {nakshaDraftRestored && (
+          <div className="px-6 pt-4">
+            <DraftNotice onDiscard={() => {
+              clearNakshaDraft();
+              setProjectId(nakshaDefaults.projectId);
+              setMapName(nakshaDefaults.mapName);
+              setOcrResult(null);
+              setNakshaDraftRestored(false);
+            }} />
+          </div>
+        )}
 
         <div className="p-6 space-y-5">
           {!ocrResult ? (

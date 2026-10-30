@@ -3,6 +3,13 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { getApiBaseUrl } from '@/utils/api'
+import { DraftNotice } from '@/components/ui/DraftNotice'
+import { useClientDraft } from '@/utils/useFormDraft'
+
+const CHAT_DEFAULTS = {
+  input: '',
+  leadForm: { name: '', phone: '', city: 'Dholera SIR', interest: 'Request Callback' },
+}
 import {
   MessageSquare,
   X,
@@ -34,18 +41,22 @@ interface ChatMessage {
 }
 
 export function HouseAndSkyChatbot() {
+  const chatDraft = useClientDraft('hs-public-chat', CHAT_DEFAULTS)
+  const input = chatDraft.value.input
+  const setInput = (next: string) => chatDraft.setValue((prev) => ({ ...prev, input: next }))
+  const leadForm = chatDraft.value.leadForm
+  const setLeadForm = (next: typeof CHAT_DEFAULTS.leadForm | ((prev: typeof CHAT_DEFAULTS.leadForm) => typeof CHAT_DEFAULTS.leadForm)) => {
+    chatDraft.setValue((prev) => ({
+      ...prev,
+      leadForm: typeof next === 'function' ? next(prev.leadForm) : next,
+    }))
+  }
+  const chatDraftRestored = chatDraft.restored
+  const setChatDraftRestored = chatDraft.setRestored
+  const clearChatDraft = chatDraft.clear
   const [isOpen, setIsOpen] = React.useState(false)
-  const [input, setInput] = React.useState('')
   const [isLoading, setIsLoading] = React.useState(false)
   const [unreadBadge, setUnreadBadge] = React.useState(true)
-
-  // Lead Form State inside Chat
-  const [leadForm, setLeadForm] = React.useState({
-    name: '',
-    phone: '',
-    city: 'Dholera SIR',
-    interest: 'Request Callback'
-  })
   const [isSubmittingLead, setIsSubmittingLead] = React.useState(false)
   const [leadSuccessMsg, setLeadSuccessMsg] = React.useState<string | null>(null)
 
@@ -171,7 +182,11 @@ export function HouseAndSkyChatbot() {
           }
         ])
 
-        setLeadForm({ name: '', phone: '', city: 'Dholera SIR', interest: 'Request Callback' })
+        setLeadForm(CHAT_DEFAULTS.leadForm)
+        if (!input.trim()) {
+          clearChatDraft()
+          setChatDraftRestored(false)
+        }
       } else {
         alert('Failed to submit. Please try again or call +91 93112 27789 directly.')
       }
@@ -446,6 +461,16 @@ export function HouseAndSkyChatbot() {
             ))}
           </div>
 
+          {chatDraftRestored && (
+            <div className="px-3 pt-2">
+              <DraftNotice onDiscard={() => {
+                clearChatDraft()
+                setInput('')
+                setLeadForm(CHAT_DEFAULTS.leadForm)
+                setChatDraftRestored(false)
+              }} />
+            </div>
+          )}
           {/* Input Bar */}
           <form
             onSubmit={(e) => {

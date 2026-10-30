@@ -4,6 +4,8 @@ import { X, UserCheck, ShoppingBag, CreditCard, User, Phone, Mail, Calendar, Clo
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { DraftNotice } from '../common/DraftNotice';
+import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
 
 const SQFT_PER_SQ_YRD = 9;
 
@@ -22,38 +24,68 @@ export const PlotDetailModal: React.FC<PlotDetailModalProps> = ({
 }) => {
   const { employee: loggedInEmployee } = useAuth();
   const toast = useToast();
+  const draftKey = `hs-admin-plot-${plot._id}`;
+  const baseline = {
+    status: plot.status,
+    ownerName: plot.ownerName || '',
+    ownerPhone: plot.ownerPhone || '',
+    ownerEmail: plot.ownerEmail || '',
+    paidAmount: plot.paidAmount || 0,
+    registryStatus: (plot.registryStatus || 'NOT_REGISTERED') as 'NOT_REGISTERED' | 'PENDING' | 'REGISTERED',
+    registryDate: plot.registryDate ? new Date(plot.registryDate).toISOString().split('T')[0] : '',
+    paymentMilestones: plot.paymentMilestones || [],
+    mTitle: '',
+    mAmount: '',
+    mDueDate: '',
+    sellerEmployeeId: plot.sellerEmployeeId
+      ? (typeof plot.sellerEmployeeId === 'string' ? plot.sellerEmployeeId : plot.sellerEmployeeId._id)
+      : (loggedInEmployee ? loggedInEmployee.id : 'DIRECT'),
+    paymentMode: 'NET_BANKING',
+    plc12mtr: plot.plc12mtr || 0,
+    plcCorner: plot.plcCorner || 0,
+    plcParkFacing: plot.plcParkFacing || 0,
+    plotType: plot.plotType || 'SIMPLE',
+    facing: plot.facing || '',
+    dimensions: plot.dimensions || '',
+    superBuiltUpSqft: plot.superBuiltUpSqft || 0,
+    plotNo: plot.plotNo || '',
+    block: plot.block || '',
+    sellableSqYrd: plot.sellableSqYrd || 0,
+  };
+  const [boot] = useState(() => mergeDraft(draftKey, baseline));
+  const initial = boot.value;
+  const [draftRestored, setDraftRestored] = useState(boot.restored);
 
-  const [status, setStatus] = useState<string>(plot.status);
-  const [ownerName, setOwnerName] = useState<string>(plot.ownerName || '');
-  const [ownerPhone, setOwnerPhone] = useState<string>(plot.ownerPhone || '');
-  const [ownerEmail, setOwnerEmail] = useState<string>(plot.ownerEmail || '');
-  const [paidAmount, setPaidAmount] = useState<number>(plot.paidAmount || 0);
-  const [registryStatus, setRegistryStatus] = useState<'NOT_REGISTERED' | 'PENDING' | 'REGISTERED'>(plot.registryStatus || 'NOT_REGISTERED');
-  const [registryDate, setRegistryDate] = useState<string>(plot.registryDate ? new Date(plot.registryDate).toISOString().split('T')[0] : '');
-
-  // Milestones State
-  const [paymentMilestones, setPaymentMilestones] = useState<any[]>(plot.paymentMilestones || []);
-  const [mTitle, setMTitle] = useState('');
-  const [mAmount, setMAmount] = useState('');
-  const [mDueDate, setMDueDate] = useState('');
-
-  const [sellerEmployeeId, setSellerEmployeeId] = useState<string>(
-    plot.sellerEmployeeId ? (typeof plot.sellerEmployeeId === 'string' ? plot.sellerEmployeeId : plot.sellerEmployeeId._id) : (loggedInEmployee ? loggedInEmployee.id : 'DIRECT')
-  );
-  const [paymentMode, setPaymentMode] = useState<string>('NET_BANKING');
+  const [status, setStatus] = useState<string>(initial.status);
+  const [ownerName, setOwnerName] = useState<string>(initial.ownerName);
+  const [ownerPhone, setOwnerPhone] = useState<string>(initial.ownerPhone);
+  const [ownerEmail, setOwnerEmail] = useState<string>(initial.ownerEmail);
+  const [paidAmount, setPaidAmount] = useState<number>(initial.paidAmount);
+  const [registryStatus, setRegistryStatus] = useState<'NOT_REGISTERED' | 'PENDING' | 'REGISTERED'>(initial.registryStatus);
+  const [registryDate, setRegistryDate] = useState<string>(initial.registryDate);
+  const [paymentMilestones, setPaymentMilestones] = useState<any[]>(initial.paymentMilestones);
+  const [mTitle, setMTitle] = useState(initial.mTitle);
+  const [mAmount, setMAmount] = useState(initial.mAmount);
+  const [mDueDate, setMDueDate] = useState(initial.mDueDate);
+  const [sellerEmployeeId, setSellerEmployeeId] = useState<string>(initial.sellerEmployeeId);
+  const [paymentMode, setPaymentMode] = useState<string>(initial.paymentMode);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  // PLC Attributes
-  const [plc12mtr, setPlc12mtr] = useState<number>(plot.plc12mtr || 0);
-  const [plcCorner, setPlcCorner] = useState<number>(plot.plcCorner || 0);
-  const [plcParkFacing, setPlcParkFacing] = useState<number>(plot.plcParkFacing || 0);
-  const [plotType, setPlotType] = useState<string>(plot.plotType || 'SIMPLE');
-  const [facing, setFacing] = useState<string>(plot.facing || '');
-  const [dimensions, setDimensions] = useState<string>(plot.dimensions || '');
-  const [superBuiltUpSqft, setSuperBuiltUpSqft] = useState<number>(plot.superBuiltUpSqft || 0);
-  const [plotNo, setPlotNo] = useState<string>(plot.plotNo || '');
-  const [block, setBlock] = useState<string>(plot.block || '');
-  const [sellableSqYrd, setSellableSqYrd] = useState<number>(plot.sellableSqYrd || 0);
+  const [plc12mtr, setPlc12mtr] = useState<number>(initial.plc12mtr);
+  const [plcCorner, setPlcCorner] = useState<number>(initial.plcCorner);
+  const [plcParkFacing, setPlcParkFacing] = useState<number>(initial.plcParkFacing);
+  const [plotType, setPlotType] = useState<string>(initial.plotType);
+  const [facing, setFacing] = useState<string>(initial.facing);
+  const [dimensions, setDimensions] = useState<string>(initial.dimensions);
+  const [superBuiltUpSqft, setSuperBuiltUpSqft] = useState<number>(initial.superBuiltUpSqft);
+  const [plotNo, setPlotNo] = useState<string>(initial.plotNo);
+  const [block, setBlock] = useState<string>(initial.block);
+  const [sellableSqYrd, setSellableSqYrd] = useState<number>(initial.sellableSqYrd);
+  const clearPlotDraft = usePersistDraft(draftKey, {
+    status, ownerName, ownerPhone, ownerEmail, paidAmount, registryStatus, registryDate,
+    paymentMilestones, mTitle, mAmount, mDueDate, sellerEmployeeId, paymentMode,
+    plc12mtr, plcCorner, plcParkFacing, plotType, facing, dimensions, superBuiltUpSqft,
+    plotNo, block, sellableSqYrd,
+  }, baseline);
 
   // IMPORTANT: plot.totalCost is already authoritative — computed by the
   // pricingEngine and persisted by the Mongoose pre-save hook. We must NOT
@@ -106,6 +138,7 @@ export const PlotDetailModal: React.FC<PlotDetailModalProps> = ({
         sizeSqft: sellableSqYrd > 0 ? Number((sellableSqYrd * SQFT_PER_SQ_YRD).toFixed(2)) : plot.sizeSqft,
         dimensions
       });
+      clearPlotDraft();
       toast.success(`Plot ${plotNo || plot.plotNo} inventory corrected`);
       onSuccess();
       onClose();
@@ -139,6 +172,7 @@ export const PlotDetailModal: React.FC<PlotDetailModalProps> = ({
         superBuiltUpSqft
       });
 
+      clearPlotDraft();
       toast.success(`Plot ${plot.plotNo} status updated successfully!`);
       onSuccess();
       onClose();
@@ -173,6 +207,35 @@ export const PlotDetailModal: React.FC<PlotDetailModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+        {draftRestored && (
+          <DraftNotice onDiscard={() => {
+            clearPlotDraft();
+            setStatus(baseline.status);
+            setOwnerName(baseline.ownerName);
+            setOwnerPhone(baseline.ownerPhone);
+            setOwnerEmail(baseline.ownerEmail);
+            setPaidAmount(baseline.paidAmount);
+            setRegistryStatus(baseline.registryStatus);
+            setRegistryDate(baseline.registryDate);
+            setPaymentMilestones(baseline.paymentMilestones);
+            setMTitle(baseline.mTitle);
+            setMAmount(baseline.mAmount);
+            setMDueDate(baseline.mDueDate);
+            setSellerEmployeeId(baseline.sellerEmployeeId);
+            setPaymentMode(baseline.paymentMode);
+            setPlc12mtr(baseline.plc12mtr);
+            setPlcCorner(baseline.plcCorner);
+            setPlcParkFacing(baseline.plcParkFacing);
+            setPlotType(baseline.plotType);
+            setFacing(baseline.facing);
+            setDimensions(baseline.dimensions);
+            setSuperBuiltUpSqft(baseline.superBuiltUpSqft);
+            setPlotNo(baseline.plotNo);
+            setBlock(baseline.block);
+            setSellableSqYrd(baseline.sellableSqYrd);
+            setDraftRestored(false);
+          }} />
+        )}
 
         {/* Pricing Details */}
         <div className="bg-[#E8F0EC] p-4 rounded-2xl border border-[#0B4F3C]/20 flex items-center justify-between">

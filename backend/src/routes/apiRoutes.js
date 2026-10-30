@@ -38,6 +38,7 @@ const PROPERTY_STATUSES = ['AVAILABLE', 'BOOKED', 'SOLD', 'UPCOMING'];
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many attempts, please try again later.' });
 const inquiryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many inquiries submitted. Please wait a few minutes before trying again.' });
+const sponsorLookupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, message: 'Too many sponsor lookups. Please wait a few minutes and try again.' });
 const propertySubmitLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 'Too many property submissions. Please wait before submitting again.' });
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many uploads. Please wait a few minutes before trying again.' });
 
@@ -62,6 +63,7 @@ router.get('/public/projects', inquiryController.getPublicProjects);
 router.get('/public/projects/:id', inquiryController.getPublicProjectById);
 router.get('/public/plots', inquiryController.getPublicPlots);
 router.get('/public/agents', inquiryController.getPublicAgents);
+router.get('/public/sponsors/lookup', sponsorLookupLimiter, employeeController.lookupPublicSponsor);
 router.get('/public/agent-invite/:code', employeeController.getPublicInvite);
 router.get('/public/locations', inquiryController.getPublicLocations);
 router.get('/public/properties', propertyController.getPublicProperties);
@@ -124,7 +126,9 @@ router.post('/public/agent-application', inquiryLimiter, validate({
   fullName: { required: true, type: 'string', minLength: 2, maxLength: 80 },
   email: { required: true, type: 'email' },
   password: { required: true, type: 'string', minLength: 6, maxLength: 128 },
-  phone: { required: true, type: 'string', minLength: 5, maxLength: 20 }
+  phone: { required: true, type: 'string', minLength: 5, maxLength: 20 },
+  sponsorCode: { type: 'string', maxLength: 40 },
+  inviteCode: { type: 'string', maxLength: 40 }
 }), inquiryController.createPublicAgentApplication);
 
 // --- Auth Routes ---
@@ -157,7 +161,9 @@ router.post('/auth/register-public-agent', authLimiter, validate({
   fullName: { required: true, type: 'string', minLength: 2, maxLength: 80 },
   email: { required: true, type: 'email' },
   password: { required: true, type: 'string', minLength: 6, maxLength: 128 },
-  phone: { required: true, type: 'string', minLength: 5, maxLength: 20 }
+  phone: { required: true, type: 'string', minLength: 5, maxLength: 20 },
+  sponsorCode: { type: 'string', maxLength: 40 },
+  inviteCode: { type: 'string', maxLength: 40 }
 }), authController.registerPublicAgent);
 
 // Property Owner Registration (separate from MLM agent flow)
