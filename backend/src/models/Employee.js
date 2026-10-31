@@ -62,7 +62,13 @@ const employeeSchema = new mongoose.Schema({
     type: Number,
     default: 1,
     min: 1
-  }
+  },
+  yearlyTargetPlots: { type: Number, default: 0 },
+  yearlyTargetAmount: { type: Number, default: 0 },
+  bankName: { type: String, default: '' },
+  bankAccountName: { type: String, default: '' },
+  bankAccountNumber: { type: String, default: '' },
+  bankIfsc: { type: String, default: '' }
 }, {
   timestamps: true,
   // Expose the `id` virtual in API JSON — the admin panel keys employee rows,

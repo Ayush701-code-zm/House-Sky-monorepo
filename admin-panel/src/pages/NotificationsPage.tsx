@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Inbox,
   TrendingUp,
-  Award
+  Award,
+  ClipboardList
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { formatDate } from '../utils/formatters';
@@ -21,7 +22,7 @@ interface BackendNotification {
   _id: string;
   title: string;
   message: string;
-  category: 'SYSTEM' | 'BULK_DEAL' | 'INQUIRY' | 'PROPERTY' | 'AGENT' | 'COMMISSION';
+  category: 'SYSTEM' | 'BULK_DEAL' | 'INQUIRY' | 'PROPERTY' | 'AGENT' | 'COMMISSION' | 'BOOKING';
   channel: 'IN_APP' | 'EMAIL' | 'WHATSAPP';
   status: 'UNREAD' | 'READ' | 'SENT' | 'FAILED';
   meta?: Record<string, any>;
@@ -29,7 +30,7 @@ interface BackendNotification {
   userId?: any;
 }
 
-type FilterTab = 'ALL' | 'UNREAD' | 'BULK_DEAL' | 'PROPERTY' | 'INQUIRY' | 'AGENT' | 'COMMISSION' | 'SYSTEM';
+type FilterTab = 'ALL' | 'UNREAD' | 'BULK_DEAL' | 'PROPERTY' | 'INQUIRY' | 'AGENT' | 'COMMISSION' | 'BOOKING' | 'SYSTEM';
 
 const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: 'ALL', label: 'All' },
@@ -39,6 +40,7 @@ const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: 'INQUIRY', label: 'Inquiries' },
   { id: 'AGENT', label: 'Agents' },
   { id: 'COMMISSION', label: 'Commission' },
+  { id: 'BOOKING', label: 'Bookings' },
   { id: 'SYSTEM', label: 'System' },
 ];
 
@@ -48,6 +50,7 @@ const CATEGORY_ICON: Record<string, React.ReactNode> = {
   INQUIRY:    <MessageSquare className="w-4 h-4" />,
   AGENT:      <Users className="w-4 h-4" />,
   COMMISSION: <Award className="w-4 h-4" />,
+  BOOKING:    <ClipboardList className="w-4 h-4" />,
   SYSTEM:     <Bell className="w-4 h-4" />,
 };
 
@@ -57,6 +60,7 @@ const CATEGORY_COLOR: Record<string, string> = {
   INQUIRY:    'bg-emerald-600 text-white',
   AGENT:      'bg-purple-600 text-white',
   COMMISSION: 'bg-[#0B4F3C] text-white',
+  BOOKING:    'bg-[#0B4F3C] text-white',
   SYSTEM:     'bg-slate-600 text-white',
 };
 
@@ -66,6 +70,7 @@ const CATEGORY_BADGE: Record<string, string> = {
   INQUIRY:    'bg-emerald-100 text-emerald-800 border-emerald-300',
   AGENT:      'bg-purple-100 text-purple-800 border-purple-300',
   COMMISSION: 'bg-[#E8F0EC] text-[#0B4F3C] border-[#0B4F3C]/30',
+  BOOKING:    'bg-[#E8F0EC] text-[#0B4F3C] border-[#0B4F3C]/30',
   SYSTEM:     'bg-slate-100 text-slate-700 border-slate-300',
 };
 

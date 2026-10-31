@@ -251,7 +251,7 @@ export const PlotManagementPage: React.FC = () => {
 
           {/* Status Filter */}
           <div className="flex items-center gap-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 p-1 rounded-xl">
-            {['ALL', 'AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'].map((st) => (
+            {['ALL', 'AVAILABLE', 'BOOKED', 'AGREEMENT', 'PENDING', 'SOLD'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}

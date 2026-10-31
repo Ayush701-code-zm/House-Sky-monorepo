@@ -116,6 +116,14 @@ const projectSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  paymentQrUrl: {
+    type: String,
+    default: ''
+  },
+  bankDetails: {
+    type: String,
+    default: ''
+  },
   mapEmbedUrl: {
     type: String,
     default: ''

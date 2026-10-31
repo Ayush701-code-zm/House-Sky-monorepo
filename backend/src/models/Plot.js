@@ -77,7 +77,7 @@ const plotSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'],
+    enum: ['AVAILABLE', 'BOOKED', 'PENDING', 'AGREEMENT', 'SOLD'],
     default: 'AVAILABLE'
   },
   approvalStatus: {

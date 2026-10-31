@@ -32,7 +32,25 @@ const ROUTE_NAMES: Record<string, string> = {
   '/ai-knowledge': 'AI Knowledge Base',
   '/notifications': 'Notifications Center',
   '/cities': 'Cities & Locations',
-  '/settings': 'System Settings'
+  '/settings': 'System Settings',
+  '/bookings': 'Bookings',
+  '/agent': 'Agent Home',
+  '/agent/plots': 'Plot Availability',
+  '/agent/booking': 'Booking Form',
+  '/agent/team-sales': 'Plots Sold by Team',
+  '/agent/collection': 'Collection from Team',
+  '/agent/yearly-plan': 'Yearly Plan',
+  '/agent/commission': 'My Commission',
+  '/agent/members': 'My Members',
+  '/agent/estimate': 'Estimate',
+  '/agent/receipt': 'Customer Receipt',
+  '/agent/cancel': 'Cancel Plot',
+  '/agent/customer-docs': 'Customer Documents',
+  '/agent/search': 'Search Executive',
+  '/agent/profile': 'My Profile',
+  '/agent/bank': 'My Bank Info',
+  '/agent/id-card': 'ID Card',
+  '/agent/password': 'Reset Password'
 };
 
 interface HeaderProps {

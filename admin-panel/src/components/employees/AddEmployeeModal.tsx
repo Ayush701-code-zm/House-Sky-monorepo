@@ -7,6 +7,7 @@ import { DraftNotice } from '../common/DraftNotice';
 import { clearDraft } from '../../utils/formDraft';
 import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
 import { SponsorSearchField } from './SponsorSearchField';
+import { useAuth } from '../../context/AuthContext';
 
 const EMPLOYEE_DRAFT_KEY = 'hs-admin-employee-new';
 const EMPLOYEE_DEFAULTS = {
@@ -27,6 +28,8 @@ interface AddEmployeeModalProps {
 
 const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSuccess, onDiscardDraft }) => {
   const toast = useToast();
+  const { user, employee } = useAuth();
+  const lockedSponsor = user?.role === 'AGENT' && employee?.id ? employee.id : '';
   const [boot] = useState(() => mergeDraft(EMPLOYEE_DRAFT_KEY, EMPLOYEE_DEFAULTS));
   const initial = boot.value;
   const [draftRestored] = useState(boot.restored);
@@ -36,7 +39,7 @@ const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSucc
   const [password, setPassword] = useState('Password123!');
   const [role, setRole] = useState(initial.role);
   const [currentRank, setCurrentRank] = useState(initial.currentRank);
-  const [parentId, setParentId] = useState(initial.parentId);
+  const [parentId, setParentId] = useState(initial.parentId || lockedSponsor);
   const [legNumber, setLegNumber] = useState<number>(initial.legNumber);
   const clearEmployeeDraft = usePersistDraft(EMPLOYEE_DRAFT_KEY, {
     fullName, email, phone, role, currentRank, parentId, legNumber,
@@ -186,7 +189,11 @@ const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSucc
 
                 <div>
                   <label className="text-[#171A18]/70 font-semibold block mb-1">Sponsorship</label>
-                  <SponsorSearchField value={parentId} onChange={setParentId} allowEmpty inputId="add-employee-sponsor" />
+                  {lockedSponsor ? (
+                    <p className="mt-1 text-[#0B4F3C] font-bold">This new executive will join under you ({employee?.employeeCode}).</p>
+                  ) : (
+                    <SponsorSearchField value={parentId} onChange={setParentId} allowEmpty inputId="add-employee-sponsor" />
+                  )}
                 </div>
 
                 <div>

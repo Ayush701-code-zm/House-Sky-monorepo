@@ -23,6 +23,7 @@ const propertyController = require('../controllers/propertyController');
 const galleryController = require('../controllers/galleryController');
 const cityController = require('../controllers/cityController');
 const settingController = require('../controllers/settingController');
+const bookingController = require('../controllers/bookingController');
 
 const { protect, authorize } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
@@ -30,7 +31,7 @@ const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/upload');
 
 const ROLES = ['ADMIN', 'MANAGER', 'EMPLOYEE', 'AGENT', 'DIRECTOR'];
-const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'];
+const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'AGREEMENT', 'SOLD'];
 const PROPERTY_TYPES = ['RESIDENTIAL_PLOT', 'COMMERCIAL', 'VILLA', 'SHOWROOM', 'APARTMENT', 'STUDIO_APARTMENT', 'LAND'];
 const LISTING_TYPES = ['SALE', 'RENT', 'LEASE'];
 const PROPERTY_STATUSES = ['AVAILABLE', 'BOOKED', 'SOLD', 'UPCOMING'];
@@ -314,6 +315,25 @@ router.put('/inquiries/:id/status', protect, authorize('ADMIN', 'MANAGER', 'DIRE
 router.get('/bulk-buy-inquiries', protect, authorize('ADMIN', 'MANAGER', 'DIRECTOR'), bulkBuyController.getBulkBuyInquiries);
 router.put('/bulk-buy-inquiries/:id/status', protect, authorize('ADMIN', 'MANAGER', 'DIRECTOR'), bulkBuyController.updateBulkBuyStatus);
 
+
+router.get('/agent/home', protect, bookingController.getHome);
+router.put('/agent/profile', protect, bookingController.updateProfile);
+router.put('/agent/bank', protect, bookingController.updateBank);
+router.get('/agent/yearly-plan', protect, bookingController.getYearlyPlan);
+router.put('/agent/yearly-target', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.updateYearlyTarget);
+router.get('/agent/team-sales', protect, bookingController.getTeamSales);
+
+router.get('/bookings/reports', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.report);
+router.get('/bookings', protect, bookingController.listBookings);
+router.post('/bookings', protect, bookingController.createBooking);
+router.get('/bookings/:id', protect, bookingController.getBooking);
+router.post('/bookings/:id/confirm', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.confirmBooking);
+router.post('/bookings/:id/reject', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.rejectBooking);
+router.post('/bookings/:id/cancel', protect, bookingController.cancelBooking);
+router.post('/bookings/:id/accept-cancel', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.acceptCancel);
+router.post('/bookings/:id/agreement', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.markAgreement);
+router.post('/bookings/:id/sold', protect, authorize('ADMIN', 'DIRECTOR'), bookingController.markSold);
+router.post('/bookings/:id/documents', protect, bookingController.addDocument);
 
 router.get('/dashboard/stats', protect, authorize('ADMIN', 'DIRECTOR'), dashboardController.getDashboardStats);
 router.get('/notifications', protect, notificationController.getNotifications);

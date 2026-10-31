@@ -6,7 +6,7 @@ const { processDifferentialCommission } = require('../services/commissionEngine'
 const { computePricing, deriveBaseRatePerSqYrd } = require('../services/pricingEngine');
 const { queryString, containsRegex } = require('../utils/queryUtils');
 
-const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'];
+const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'AGREEMENT', 'SOLD'];
 
 exports.getPlots = async (req, res, next) => {
   try {
@@ -400,7 +400,7 @@ exports.importPlotsCSV = async (req, res, next) => {
           totalCost: finalTotalCost,
           price: finalTotalCost || 0,
           sizeSqft: sellableSqYrd ? sellableSqYrd * 9 : 1800,
-          status: ['AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'].includes(status) ? status : 'AVAILABLE',
+          status: ['AVAILABLE', 'BOOKED', 'PENDING', 'AGREEMENT', 'SOLD'].includes(status) ? status : 'AVAILABLE',
           ownerName
         },
         { upsert: true, new: true }

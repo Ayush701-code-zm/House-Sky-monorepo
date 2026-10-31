@@ -367,6 +367,7 @@ export const PlotDetailModal: React.FC<PlotDetailModalProps> = ({
             >
               <option value="AVAILABLE">AVAILABLE (Green)</option>
               <option value="BOOKED">BOOKED (Yellow)</option>
+              <option value="AGREEMENT">AGREEMENT (Purple)</option>
               <option value="PENDING">PENDING (Yellow)</option>
               <option value="SOLD">SOLD (Red — triggers commission)</option>
             </select>

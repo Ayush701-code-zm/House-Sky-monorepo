@@ -51,6 +51,8 @@ const navSections: NavSection[] = [
     title: 'OVERVIEW & LEADS',
     items: [
       { name: 'Executive Dashboard', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ADMIN_DIRECTOR },
+      { name: 'Agent Home', path: '/agent', icon: LayoutDashboard, allowedRoles: ALL_ROLES },
+      { name: 'Bookings', path: '/bookings', icon: ClipboardCheck, allowedRoles: ADMIN_DIRECTOR },
       { name: 'Customer Inquiries', path: '/inquiries', icon: MessageSquare, allowedRoles: ALL_ROLES },
       { name: 'Bulk Deal Requests', path: '/bulk-deal-requests', icon: PackageSearch, allowedRoles: ADMIN_DIRECTOR_MANAGER, badge: 'NEW' },
     ]
@@ -168,6 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onClose 
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    end
                     className={({ isActive }) =>
                       `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
                         isActive

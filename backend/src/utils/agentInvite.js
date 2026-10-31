@@ -182,5 +182,6 @@ module.exports = {
   resolvePublicSponsor,
   findUserByPhone,
   publicSponsorPayload,
-  publicSponsorLookupPayload
+  publicSponsorLookupPayload,
+  sponsorCodeCandidates
 };

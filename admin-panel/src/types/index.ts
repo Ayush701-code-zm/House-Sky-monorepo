@@ -236,7 +236,7 @@ export interface Plot {
   gstOnOtherCharges?: number;
   totalCost?: number;
   price: number;
-  status: 'AVAILABLE' | 'BOOKED' | 'PENDING' | 'SOLD';
+  status: 'AVAILABLE' | 'BOOKED' | 'PENDING' | 'AGREEMENT' | 'SOLD';
   plotType?: string;
   facing?: string;
   dimensions?: string;

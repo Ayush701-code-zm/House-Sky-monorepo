@@ -41,6 +41,7 @@ export function statusBlockClass(_status: string): string {
 export function statusBadgeClass(status: string): string {
   if (status === 'AVAILABLE') return 'text-emerald-700 bg-emerald-100'
   if (status === 'SOLD') return 'text-red-700 bg-red-100'
+  if (status === 'AGREEMENT') return 'text-violet-800 bg-violet-100'
   if (status === 'BOOKED') return 'text-sky-700 bg-sky-100'
   return 'text-amber-700 bg-amber-100'
 }

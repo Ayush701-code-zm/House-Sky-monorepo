@@ -30,7 +30,7 @@ exports.getProjects = async (req, res, next) => {
           { $group: { _id: "$status", count: { $sum: 1 } } }
         ]);
 
-        const statsMap = { AVAILABLE: 0, BOOKED: 0, PENDING: 0, SOLD: 0 };
+        const statsMap = { AVAILABLE: 0, BOOKED: 0, PENDING: 0, AGREEMENT: 0, SOLD: 0 };
         plotCounts.forEach(item => {
           if (item._id && statsMap[item._id] !== undefined) {
             statsMap[item._id] = item.count;
@@ -47,6 +47,7 @@ exports.getProjects = async (req, res, next) => {
           availableCount: statsMap.AVAILABLE,
           bookedCount: statsMap.BOOKED,
           pendingCount: statsMap.PENDING,
+          agreementCount: statsMap.AGREEMENT,
           soldCount: statsMap.SOLD
         };
       })

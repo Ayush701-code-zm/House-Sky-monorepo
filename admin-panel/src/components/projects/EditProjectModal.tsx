@@ -54,6 +54,8 @@ function editProjectBaseline(project: Project) {
     village: project.village || '',
     googleMapsUrl: project.googleMapsUrl || '',
     mapEmbedUrl: project.mapEmbedUrl || '',
+    paymentQrUrl: (project as any).paymentQrUrl || '',
+    bankDetails: (project as any).bankDetails || '',
     latitude: project.latitude ?? null,
     longitude: project.longitude ?? null,
     fileName: '',
@@ -103,6 +105,8 @@ const EditProjectModalBody: React.FC<EditProjectModalProps> = ({ project, onClos
   const [village, setVillage] = useState(initial.village);
   const [googleMapsUrl, setGoogleMapsUrl] = useState(initial.googleMapsUrl);
   const [mapEmbedUrl, setMapEmbedUrl] = useState(initial.mapEmbedUrl);
+  const [paymentQrUrl, setPaymentQrUrl] = useState(initial.paymentQrUrl);
+  const [bankDetails, setBankDetails] = useState(initial.bankDetails);
   const [latitude, setLatitude] = useState<number | null>(initial.latitude);
   const [longitude, setLongitude] = useState<number | null>(initial.longitude);
   const [fileName, setFileName] = useState(initial.fileName);
@@ -116,7 +120,7 @@ const EditProjectModalBody: React.FC<EditProjectModalProps> = ({ project, onClos
     highlightInput, amenityInput, locAdvDistance, locAdvLandmark, contactPhone, contactEmail,
     brochureUrl, videoUrl, reraNumber, titleType, approvalAuthority, mapImageUrl, mapImageS3Key,
     bannerImage, bannerImageS3Key, bannerFileName, gallery, surveyNumber, village,
-    googleMapsUrl, mapEmbedUrl, latitude, longitude, fileName, isDholera,
+    googleMapsUrl, mapEmbedUrl, paymentQrUrl, bankDetails, latitude, longitude, fileName, isDholera,
   }, baseline);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,6 +211,8 @@ const EditProjectModalBody: React.FC<EditProjectModalProps> = ({ project, onClos
         longitude,
         googleMapsUrl,
         mapEmbedUrl,
+        paymentQrUrl,
+        bankDetails,
         mapImageS3Key,
         isDholera
       });
@@ -487,6 +493,17 @@ const EditProjectModalBody: React.FC<EditProjectModalProps> = ({ project, onClos
           <div>
             <label className="text-[#171A18]/70 font-semibold">Brochure URL (PDF)</label>
             <input type="url" placeholder="https://…/brochure.pdf" value={brochureUrl} onChange={(e) => setBrochureUrl(e.target.value)}
+              className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
+          </div>
+          <div>
+            <label className="text-[#171A18]/70 font-semibold">Payment QR URL (optional)</label>
+            <input type="url" placeholder="https://…/qr.png" value={paymentQrUrl} onChange={(e) => setPaymentQrUrl(e.target.value)}
+              className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
+          </div>
+          <div>
+            <label className="text-[#171A18]/70 font-semibold">Bank details for this project (optional)</label>
+            <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={2}
+              placeholder="Account name, number, IFSC"
               className="w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-[#171A18] font-bold focus:outline-none focus:border-[#0B4F3C]" />
           </div>
 

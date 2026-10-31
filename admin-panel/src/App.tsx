@@ -29,6 +29,15 @@ import { GalleryPage } from './pages/GalleryPage';
 import { CitiesPage } from './pages/CitiesPage';
 import { BulkDealsPage } from './pages/BulkDealsPage';
 import { BulkDealRequestsPage } from './pages/BulkDealRequestsPage';
+import { BookingsPage } from './pages/BookingsPage';
+import { AgentHomePage } from './pages/agent/AgentHomePage';
+import { PlotAvailabilityPage } from './pages/agent/PlotAvailabilityPage';
+import { BookingFormPage } from './pages/agent/BookingFormPage';
+import {
+  TeamSalesPage, CollectionPage, YearlyPlanPage, MyCommissionPage, MembersPage,
+  EstimatePage, ReceiptPage, CancelPlotPage, CustomerDocsPage, SearchExecutivePage,
+  ProfilePage, BankPage, IdCardPage, PasswordPage
+} from './pages/agent/AgentToolsPages';
 
 const ADMIN_ROLES = ['ADMIN', 'DIRECTOR'];
 const STAFF_ROLES = ['ADMIN', 'DIRECTOR', 'MANAGER'];
@@ -43,11 +52,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean;
     return <Navigate to="/login" replace />;
   }
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+  const fallback = isAdmin ? '/dashboard' : '/agent';
   if (adminOnly && !isAdmin) {
-    return <Navigate to="/mlm-tree" replace />;
+    return <Navigate to={fallback} replace />;
   }
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/mlm-tree" replace />;
+    return <Navigate to={fallback} replace />;
   }
   return <Layout>{children}</Layout>;
 };
@@ -55,7 +65,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean;
 const HomeRedirect: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
-  return <Navigate to={isAdmin ? '/dashboard' : '/mlm-tree'} replace />;
+  return <Navigate to={isAdmin ? '/dashboard' : '/agent'} replace />;
 };
 
 export const App: React.FC = () => {
@@ -82,6 +92,24 @@ export const App: React.FC = () => {
             <Route path="/gallery-management" element={<ProtectedRoute roles={STAFF_ROLES}><GalleryPage /></ProtectedRoute>} />
             <Route path="/cities" element={<ProtectedRoute roles={STAFF_ROLES}><CitiesPage /></ProtectedRoute>} />
             <Route path="/plots" element={<ProtectedRoute><PlotManagementPage /></ProtectedRoute>} />
+            <Route path="/bookings" element={<ProtectedRoute adminOnly><BookingsPage /></ProtectedRoute>} />
+            <Route path="/agent" element={<ProtectedRoute><AgentHomePage /></ProtectedRoute>} />
+            <Route path="/agent/plots" element={<ProtectedRoute><PlotAvailabilityPage /></ProtectedRoute>} />
+            <Route path="/agent/team-sales" element={<ProtectedRoute><TeamSalesPage /></ProtectedRoute>} />
+            <Route path="/agent/collection" element={<ProtectedRoute><CollectionPage /></ProtectedRoute>} />
+            <Route path="/agent/yearly-plan" element={<ProtectedRoute><YearlyPlanPage /></ProtectedRoute>} />
+            <Route path="/agent/commission" element={<ProtectedRoute><MyCommissionPage /></ProtectedRoute>} />
+            <Route path="/agent/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
+            <Route path="/agent/estimate" element={<ProtectedRoute><EstimatePage /></ProtectedRoute>} />
+            <Route path="/agent/booking" element={<ProtectedRoute><BookingFormPage /></ProtectedRoute>} />
+            <Route path="/agent/receipt" element={<ProtectedRoute><ReceiptPage /></ProtectedRoute>} />
+            <Route path="/agent/cancel" element={<ProtectedRoute><CancelPlotPage /></ProtectedRoute>} />
+            <Route path="/agent/customer-docs" element={<ProtectedRoute><CustomerDocsPage /></ProtectedRoute>} />
+            <Route path="/agent/search" element={<ProtectedRoute><SearchExecutivePage /></ProtectedRoute>} />
+            <Route path="/agent/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/agent/bank" element={<ProtectedRoute><BankPage /></ProtectedRoute>} />
+            <Route path="/agent/id-card" element={<ProtectedRoute><IdCardPage /></ProtectedRoute>} />
+            <Route path="/agent/password" element={<ProtectedRoute><PasswordPage /></ProtectedRoute>} />
 
             <Route path="/plot-maps" element={<Navigate to="/plots" replace />} />
             <Route path="/commissions" element={<ProtectedRoute roles={STAFF_ROLES}><CommissionsPage /></ProtectedRoute>} />

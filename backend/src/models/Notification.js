@@ -18,7 +18,7 @@ const notificationSchema = new mongoose.Schema({
   // category for filtering in the admin notification feed
   category: {
     type: String,
-    enum: ['SYSTEM', 'BULK_DEAL', 'INQUIRY', 'PROPERTY', 'AGENT', 'COMMISSION'],
+    enum: ['SYSTEM', 'BULK_DEAL', 'INQUIRY', 'PROPERTY', 'AGENT', 'COMMISSION', 'BOOKING'],
     default: 'SYSTEM'
   },
   channel: {

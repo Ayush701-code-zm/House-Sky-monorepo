@@ -224,7 +224,7 @@ export const PlotMapCanvas: React.FC<PlotMapCanvasProps> = ({
 
       <div className="flex flex-wrap items-center justify-between gap-4 bg-[#FDFCF0] p-3 rounded-xl border border-[#0B4F3C]/15">
         <div className="flex items-center gap-2 flex-wrap">
-          {['ALL', 'AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'].map((status) => (
+          {['ALL', 'AVAILABLE', 'BOOKED', 'AGREEMENT', 'PENDING', 'SOLD'].map((status) => (
             <button
               key={status}
               onClick={() => setActiveFilter(status)}

@@ -20,6 +20,7 @@ exports.getDashboardStats = async (req, res, next) => {
       AVAILABLE: 0,
       BOOKED: 0,
       PENDING: 0,
+      AGREEMENT: 0,
       SOLD: 0
     };
 
@@ -131,6 +132,7 @@ exports.getDashboardStats = async (req, res, next) => {
         plotStatusDistribution: [
           { name: 'Available', value: plotStats.AVAILABLE, color: '#22C55E' },
           { name: 'Booked', value: plotStats.BOOKED, color: '#3B82F6' },
+          { name: 'Agreement', value: plotStats.AGREEMENT, color: '#7C3AED' },
           { name: 'Pending', value: plotStats.PENDING, color: '#FACC15' },
           { name: 'Sold', value: plotStats.SOLD, color: '#EF4444' }
         ],

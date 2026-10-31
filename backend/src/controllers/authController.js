@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { JWT_SECRET, JWT_EXPIRE } = require('../config/jwt');
-const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone } = require('../utils/agentInvite');
+const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone, sponsorCodeCandidates } = require('../utils/agentInvite');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 const generateToken = (user) => {
@@ -200,13 +200,20 @@ exports.login = async (req, res, next) => {
       return res.status(400).json({ message: 'Email/Mobile number and password are required' });
     }
 
-    const user = await User.findOne({
+    let user = await User.findOne({
       $or: [
         { email: identifier },
         { phone: identifier },
         { phone: cleanPhone }
       ]
     });
+    if (!user) {
+      const codes = sponsorCodeCandidates(identifier);
+      if (codes.length) {
+        const byCode = await Employee.findOne({ employeeCode: { $in: codes } });
+        if (byCode) user = await User.findById(byCode.userId);
+      }
+    }
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }

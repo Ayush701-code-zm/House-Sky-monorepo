@@ -5,7 +5,7 @@ const SQFT_PER_SQ_YRD = 9;
 const CANVAS_WIDTH = 1000;
 const CANVAS_HEIGHT = 600;
 const DEFAULT_STATUS = 'AVAILABLE';
-const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'SOLD'];
+const PLOT_STATUSES = ['AVAILABLE', 'BOOKED', 'PENDING', 'AGREEMENT', 'SOLD'];
 const CRM_LOCKED_STATUSES = ['BOOKED', 'PENDING'];
 
 function toNumber(value, fallback = 0) {

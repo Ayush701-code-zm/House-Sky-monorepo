@@ -17,6 +17,7 @@ type PlotStatusGridProps = {
 
 function cellStyle(status: string): string {
   if (status === 'SOLD') return 'bg-red-500 text-white border-red-700'
+  if (status === 'AGREEMENT') return 'bg-violet-600 text-white border-violet-800'
   if (status === 'BOOKED') return 'bg-amber-400 text-amber-950 border-amber-600'
   if (status === 'PENDING') return 'bg-yellow-300 text-yellow-950 border-yellow-500'
   return 'bg-emerald-500 text-white border-emerald-700'

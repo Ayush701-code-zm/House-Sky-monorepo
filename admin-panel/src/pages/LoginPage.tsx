@@ -48,7 +48,7 @@ export const LoginPage: React.FC = () => {
 
       login(token, user, employee);
       const isAdmin = ['ADMIN', 'DIRECTOR'].includes(user.role);
-      navigate(isAdmin ? '/dashboard' : '/mlm-tree');
+      navigate(isAdmin ? '/dashboard' : '/agent');
     } catch (err: any) {
       console.error(err);
       const responseData = err.response?.data;
@@ -180,13 +180,13 @@ export const LoginPage: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs text-[#171A18]/70 font-semibold">Email Address or Mobile Number</label>
+            <label className="text-xs text-[#171A18]/70 font-semibold">Member ID, email, or mobile</label>
             <div className="relative mt-1">
               <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#171A18]/50" />
               <input
                 type="text"
                 required
-                placeholder="you@example.com or 10-digit mobile"
+                placeholder="H&S-1004, email, or mobile"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl pl-9 pr-4 py-2.5 text-xs text-[#171A18] placeholder-[#171A18]/50 focus:outline-none focus:border-[#0B4F3C]"
