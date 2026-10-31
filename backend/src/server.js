@@ -59,8 +59,14 @@ app.get('/', (req, res) => {
 // Error Handling Middleware
 app.use(errorHandler);
 
+const { startCommissionCron } = require('./services/commissionCron');
+
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (NODE_ENV !== 'test') {
+  startCommissionCron();
+}
 
 // Increase timeout for long-running OCR operations (10 minutes)
 const server = app.listen(PORT, () => {

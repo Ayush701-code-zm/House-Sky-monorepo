@@ -286,6 +286,7 @@ router.get('/ocr/latest/:projectId', protect, authorize('ADMIN', 'DIRECTOR'), oc
 
 router.get('/commissions', protect, commissionController.getCommissions);
 router.get('/commissions/summary', protect, authorize('ADMIN', 'DIRECTOR', 'MANAGER'), commissionController.getCommissionSummary);
+router.post('/commissions/run', protect, authorize('ADMIN', 'DIRECTOR'), commissionController.runCommissionCalculation);
 
 router.get('/payouts', protect, payoutController.getPayouts);
 router.post('/payouts/request', protect, validate({

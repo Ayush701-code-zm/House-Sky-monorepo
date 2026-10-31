@@ -1,6 +1,7 @@
 const Commission = require('../models/Commission');
 const Employee = require('../models/Employee');
 const { getDownlineEmployeeIds } = require('../services/mlmEngine');
+const { runCommissionCalculation } = require('../services/commissionCron');
 
 exports.getCommissions = async (req, res, next) => {
   try {
@@ -81,6 +82,15 @@ exports.getCommissionSummary = async (req, res, next) => {
       totalPaid: totalCommissionsPaid.length > 0 ? totalCommissionsPaid[0].total : 0,
       totalPending: totalCommissionsPending.length > 0 ? totalCommissionsPending[0].total : 0
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.runCommissionCalculation = async (req, res, next) => {
+  try {
+    const result = await runCommissionCalculation();
+    res.json(result);
   } catch (error) {
     next(error);
   }

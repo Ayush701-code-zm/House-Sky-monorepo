@@ -7,12 +7,17 @@ import { ErrorState } from '../components/common/ErrorState';
 import { Pagination } from '../components/common/Pagination';
 import { formatCurrency } from '../utils/formatters';
 import { CheckCircle2, Clock, DollarSign, RefreshCw } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export const CommissionsPage: React.FC = () => {
+  const { user } = useAuth();
+  const canRun = user?.role === 'ADMIN' || user?.role === 'DIRECTOR';
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [runNote, setRunNote] = useState('');
+  const [running, setRunning] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,15 +52,43 @@ export const CommissionsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-serif font-bold text-[#171A18]">Differential Commission Ledger</h2>
-          <p className="text-xs text-[#171A18]/70 mt-1">Multi-tier commission distribution logs generated from plot sales</p>
+          <p className="text-xs text-[#171A18]/70 mt-1">The same calculation also runs at 12:00 AM. It pays sold plots that do not have a commission yet.</p>
+          {runNote && <p className="text-xs font-semibold text-[#0B4F3C] mt-1">{runNote}</p>}
         </div>
-        <button
-          onClick={fetchCommissions}
-          className="p-2.5 rounded-xl bg-[#E8F0EC] border border-[#0B4F3C]/20 text-[#0B4F3C] hover:bg-[#0B4F3C] hover:text-white transition-colors cursor-pointer"
-          title="Refresh Commissions"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          {canRun && (
+            <button
+              type="button"
+              disabled={running}
+              onClick={async () => {
+                setRunning(true);
+                setRunNote('');
+                try {
+                  const res = await api.post('/commissions/run');
+                  const data = res.data || {};
+                  setRunNote(data.skipped
+                    ? 'A calculation is already running.'
+                    : `Calculated ${data.processed || 0} sale${data.processed === 1 ? '' : 's'}. ${data.created || 0} commission row${data.created === 1 ? '' : 's'} added.`);
+                  await fetchCommissions();
+                } catch (e: any) {
+                  setRunNote(e?.response?.data?.message || 'The calculation could not be run.');
+                } finally {
+                  setRunning(false);
+                }
+              }}
+              className="px-3 py-2 rounded-xl bg-[#0B4F3C] text-white text-xs font-bold disabled:opacity-60"
+            >
+              {running ? 'Calculating…' : 'Run calculation'}
+            </button>
+          )}
+          <button
+            onClick={fetchCommissions}
+            className="p-2.5 rounded-xl bg-[#E8F0EC] border border-[#0B4F3C]/20 text-[#0B4F3C] hover:bg-[#0B4F3C] hover:text-white transition-colors cursor-pointer"
+            title="Refresh Commissions"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
