@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { JWT_SECRET, JWT_EXPIRE } = require('../config/jwt');
-const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone, sponsorCodeCandidates } = require('../utils/agentInvite');
+const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone, agentContactSlot, sponsorCodeCandidates } = require('../utils/agentInvite');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 const generateToken = (user) => {
@@ -24,22 +24,27 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    let user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (user) {
-      return res.status(400).json({ message: 'User with this email already exists' });
-    }
-    if (phone && await findUserByPhone(phone)) {
-      return res.status(400).json({ message: 'An account with this mobile number already exists' });
+    const userRole = role || 'AGENT';
+    if (userRole === 'AGENT') {
+      const slot = await agentContactSlot(email, phone);
+      if (slot) return res.status(400).json({ message: slot });
+    } else {
+      const existing = await User.findOne({ email: email.toLowerCase().trim() });
+      if (existing) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+      if (phone && await findUserByPhone(phone)) {
+        return res.status(400).json({ message: 'An account with this mobile number already exists' });
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const userRole = role || 'AGENT';
     const isAdminRole = ['ADMIN', 'DIRECTOR'].includes(userRole);
     const vToken = generateRandomToken();
 
-    user = await User.create({
+    const user = await User.create({
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       fullName,
@@ -58,7 +63,7 @@ exports.register = async (req, res, next) => {
         userId: user._id,
         employeeCode: await generateEmployeeCode(),
         joiningDate: new Date(),
-        currentRank: currentRank || 'Business Executive',
+        currentRank: currentRank || 'Advisor',
         parentId: parentEmployeeId || null
       });
     } catch (err) {
@@ -121,12 +126,9 @@ exports.registerPublicAgent = async (req, res, next) => {
     }
     const sponsor = sponsorResult.sponsor;
 
-    let user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (user) {
-      return res.status(400).json({ message: 'An account with this email already exists' });
-    }
-    if (await findUserByPhone(phone)) {
-      return res.status(400).json({ message: 'An account with this mobile number already exists' });
+    const slot = await agentContactSlot(email, phone);
+    if (slot) {
+      return res.status(400).json({ message: slot });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -134,7 +136,7 @@ exports.registerPublicAgent = async (req, res, next) => {
 
     const vToken = generateRandomToken();
 
-    user = await User.create({
+    const user = await User.create({
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       fullName,
@@ -154,7 +156,7 @@ exports.registerPublicAgent = async (req, res, next) => {
         userId: user._id,
         employeeCode,
         joiningDate: new Date(),
-        currentRank: 'Business Executive',
+        currentRank: 'Advisor',
         parentId: sponsor._id
       });
     } catch (err) {
@@ -200,28 +202,43 @@ exports.login = async (req, res, next) => {
       return res.status(400).json({ message: 'Email/Mobile number and password are required' });
     }
 
-    let user = await User.findOne({
+    let users = await User.find({
       $or: [
         { email: identifier },
         { phone: identifier },
-        { phone: cleanPhone }
+        { phone: cleanPhone },
+        ...(cleanPhone.replace(/\D/g, '').length >= 5
+          ? [{ phone: { $regex: `^\\D*${cleanPhone.replace(/\D/g, '').split('').join('\\D*')}\\D*$` } }]
+          : [])
       ]
     });
-    if (!user) {
+    if (!users.length) {
       const codes = sponsorCodeCandidates(identifier);
       if (codes.length) {
         const byCode = await Employee.findOne({ employeeCode: { $in: codes } });
-        if (byCode) user = await User.findById(byCode.userId);
+        if (byCode) {
+          const byMember = await User.findById(byCode.userId);
+          if (byMember) users = [byMember];
+        }
       }
     }
-    if (!user) {
+    if (!users.length) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    const matched = [];
+    for (const candidate of users) {
+      if (await bcrypt.compare(password, candidate.password)) matched.push(candidate);
+    }
+    if (!matched.length) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    if (matched.length > 1) {
+      return res.status(409).json({
+        message: 'This email and mobile are shared by more than one member ID. Sign in with the member ID.'
+      });
+    }
+    const user = matched[0];
 
     const isAdmin = ['ADMIN', 'DIRECTOR'].includes(user.role);
 

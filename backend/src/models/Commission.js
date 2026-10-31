@@ -32,6 +32,10 @@ const commissionSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  turnoverAmount: {
+    type: Number,
+    default: 0
+  },
   commissionAmount: {
     type: Number,
     required: true

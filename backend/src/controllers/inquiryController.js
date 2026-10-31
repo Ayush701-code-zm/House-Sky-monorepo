@@ -6,7 +6,7 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const bcrypt = require('bcryptjs');
 const { getPresignedUrl } = require('../services/s3Service');
-const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone } = require('../utils/agentInvite');
+const { resolvePublicSponsor, generateEmployeeCode, findUserByPhone, agentContactSlot } = require('../utils/agentInvite');
 const { deriveMapEmbedUrl } = require('../utils/googleMaps');
 const { notifyAdmins } = require('../services/notificationService');
 const { withFreshProjectMedia } = require('../utils/mediaHydrator');
@@ -246,18 +246,15 @@ exports.createPublicAgentApplication = async (req, res, next) => {
     }
     const sponsor = sponsorResult.sponsor;
 
-    let user = await User.findOne({ email: normalizedEmail });
-    if (user) {
-      return res.status(400).json({ message: 'An account with this email address already exists' });
-    }
-    if (await findUserByPhone(phone)) {
-      return res.status(400).json({ message: 'An account with this mobile number already exists' });
+    const slot = await agentContactSlot(normalizedEmail, phone);
+    if (slot) {
+      return res.status(400).json({ message: slot });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    user = await User.create({
+    const user = await User.create({
       email: normalizedEmail,
       password: hashedPassword,
       fullName,
@@ -273,7 +270,7 @@ exports.createPublicAgentApplication = async (req, res, next) => {
         userId: user._id,
         employeeCode: await generateEmployeeCode(),
         joiningDate: new Date(),
-        currentRank: 'Business Executive',
+        currentRank: 'Advisor',
         parentId: sponsor ? sponsor._id : null
       });
     } catch (err) {
@@ -391,7 +388,7 @@ exports.getPublicAgents = async (req, res, next) => {
           employeeCode: emp.employeeCode,
           totalSalesVolume: `${emp.selfSalesCount || 0} Plots Sold`,
           activeListingsCount: emp.teamSalesCount || 0,
-          bio: `${name} is an active ${emp.currentRank || 'Business Executive'} managing downline plot inquiries, direct buyer consultations, and site tours for luxury township masterplans.`,
+          bio: `${name} is an active ${emp.currentRank || 'Advisor'} managing downline plot inquiries, direct buyer consultations, and site tours for luxury township masterplans.`,
           rank: emp.currentRank
         };
       });

@@ -1,54 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, MapPin, Users, Wallet, UserRound } from 'lucide-react';
+import {
+  MapPin, Calculator, FilePlus, Receipt, Ban, FolderUp,
+  IndianRupee, CalendarRange, Users, Wallet, UserPlus, Search,
+  User, FileCheck, Landmark, CreditCard, KeyRound, GitBranch
+} from 'lucide-react';
 import api from '../../services/api';
-import { StatCard } from '../../components/dashboard/StatCard';
 
-/** Agent desk. Grouped lists, not a tile wall. */
-const GROUPS = [
-  {
-    title: 'Inventory',
-    icon: MapPin,
-    items: [
-      { to: '/agent/plots', label: 'Open a project', hint: 'Counts, plot list, and the details of one plot' },
-      { to: '/agent/estimate', label: 'Price a plot', hint: 'See the price already stored for that unit' },
-      { to: '/agent/booking', label: 'Start a booking', hint: 'Customer file, deposit photo, then company check' },
-    ],
-  },
-  {
-    title: 'Your records',
-    icon: Wallet,
-    items: [
-      { to: '/agent/receipt', label: 'Customer receipt', hint: 'Print a confirmed booking' },
-      { to: '/agent/cancel', label: 'Cancel a booking', hint: 'Withdraw a pending file, or ask to release a confirmed one' },
-      { to: '/agent/customer-docs', label: 'Add a customer file', hint: 'Attach another document to a booking' },
-      { to: '/agent/commission', label: 'Commission', hint: 'What this login has earned' },
-      { to: '/agent/yearly-plan', label: 'This year’s target', hint: 'Plots and amount against what you have booked' },
-    ],
-  },
-  {
-    title: 'Team',
-    icon: Users,
-    items: [
-      { to: '/agent/team-sales', label: 'Team bookings', hint: 'One person, a date range, summary or each sale' },
-      { to: '/agent/collection', label: 'Money collected', hint: 'Booking amounts recorded for your team' },
-      { to: '/agent/members', label: 'People under you', hint: 'Member ID, rank, and joining' },
-      { to: '/mlm-tree', label: 'Network tree', hint: 'The same downline as a tree' },
-      { to: '/employees', label: 'Add an executive', hint: 'They join under your member ID' },
-      { to: '/agent/search', label: 'Find an executive', hint: 'Search by name or member ID' },
-    ],
-  },
-  {
-    title: 'Account',
-    icon: UserRound,
-    items: [
-      { to: '/agent/profile', label: 'Profile', hint: 'Name and phone on this login' },
-      { to: '/kyc', label: 'Your documents', hint: 'PAN, Aadhaar, and nominee for you' },
-      { to: '/agent/bank', label: 'Payout account', hint: 'Where your commission is sent' },
-      { to: '/agent/id-card', label: 'ID card', hint: 'Printable card with your member ID' },
-      { to: '/agent/password', label: 'Password', hint: 'Replace the password for this login' },
-    ],
-  },
+const TILES = [
+  { to: '/agent/plots', label: 'Plot availability', icon: MapPin, box: 'bg-emerald-500' },
+  { to: '/agent/estimate', label: 'Estimate', icon: Calculator, box: 'bg-sky-500' },
+  { to: '/agent/booking', label: 'Booking form', icon: FilePlus, box: 'bg-amber-500' },
+  { to: '/agent/receipt', label: 'Customer receipt', icon: Receipt, box: 'bg-teal-600' },
+  { to: '/agent/cancel', label: 'Cancel plot', icon: Ban, box: 'bg-rose-500' },
+  { to: '/agent/customer-docs', label: 'Customer documents', icon: FolderUp, box: 'bg-indigo-500' },
+  { to: '/agent/commission', label: 'Commission', icon: IndianRupee, box: 'bg-orange-500' },
+  { to: '/agent/yearly-plan', label: 'Yearly plan', icon: CalendarRange, box: 'bg-cyan-600' },
+  { to: '/agent/team-sales', label: 'Team sales', icon: Users, box: 'bg-lime-600' },
+  { to: '/agent/collection', label: 'Collection', icon: Wallet, box: 'bg-fuchsia-600' },
+  { to: '/agent/members', label: 'My members', icon: Users, box: 'bg-blue-600' },
+  { to: '/mlm-tree', label: 'Member tree', icon: GitBranch, box: 'bg-violet-600' },
+  { to: '/employees', label: 'Add executive', icon: UserPlus, box: 'bg-green-600' },
+  { to: '/agent/search', label: 'Search executive', icon: Search, box: 'bg-yellow-500' },
+  { to: '/agent/profile', label: 'My profile', icon: User, box: 'bg-slate-600' },
+  { to: '/kyc', label: 'My documents', icon: FileCheck, box: 'bg-pink-600' },
+  { to: '/agent/bank', label: 'Bank details', icon: Landmark, box: 'bg-emerald-700' },
+  { to: '/agent/id-card', label: 'ID card', icon: CreditCard, box: 'bg-red-600' },
+  { to: '/agent/password', label: 'Reset password', icon: KeyRound, box: 'bg-stone-600' },
 ];
 
 export const AgentHomePage: React.FC = () => {
@@ -61,64 +39,66 @@ export const AgentHomePage: React.FC = () => {
     });
   }, []);
 
-  const initial = (home?.fullName || 'A').trim().charAt(0).toUpperCase();
+  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="space-y-6 pb-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="space-y-4 pb-10">
+      <div className="rounded-2xl bg-[#0B4F3C] text-white px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-[#171A18]">Your desk</h2>
-          <p className="text-xs text-[#171A18]/70 mt-1">Bookings, plots, and the people who joined under you</p>
+          <p className="text-[11px] uppercase tracking-widest text-[#C6A15B] font-bold">Welcome</p>
+          <h2 className="font-serif text-2xl font-bold">{home?.fullName || 'Agent'}</h2>
+          <p className="text-xs text-white/75 mt-1">{today}</p>
         </div>
         {home?.companyPhone && (
-          <a href={`tel:${home.companyPhone}`} className="text-xs font-bold text-[#0B4F3C] bg-[#E8F0EC] border border-[#0B4F3C]/15 rounded-full px-3 py-1.5">
-            Desk {home.companyPhone}
+          <a href={`tel:${home.companyPhone}`} className="text-xs font-bold bg-white/10 border border-white/20 rounded-full px-3 py-1.5 w-fit">
+            {home.companyPhone}
           </a>
         )}
       </div>
 
       {error && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
 
-      <div className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-5 flex items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-[#0B4F3C] text-white font-serif text-2xl flex items-center justify-center">{initial}</div>
+      <div className="grid grid-cols-3 gap-3">
+        <CountBox label="Executives" value={home?.executives} box="bg-emerald-500" />
+        <CountBox label="Plots sold" value={home?.plotsSold} box="bg-sky-500" />
+        <CountBox label="Confirmed" value={home?.confirmedBookings} box="bg-amber-500" />
+      </div>
+
+      <div className="rounded-2xl bg-[#C6A15B] text-[#171A18] px-4 py-3 flex items-center justify-between gap-3">
         <div>
-          <p className="font-serif text-xl font-bold text-[#171A18]">{home?.fullName || 'Loading…'}</p>
-          <p className="text-xs text-[#171A18]/70 mt-1">{home?.currentRank} · {home?.employeeCode}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide">Member ID</p>
+          <p className="font-serif text-xl font-bold">{home?.employeeCode || '—'}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] font-bold uppercase tracking-wide">Rank</p>
+          <p className="text-sm font-bold">{home?.currentRank || '—'}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard title="People under you" value={home?.executives ?? '—'} icon={Users} subtitle="Direct and further down the line" />
-        <StatCard title="Plots sold" value={home?.plotsSold ?? '—'} icon={MapPin} subtitle="Confirmed bookings now marked sold" />
-        <StatCard title="Confirmed bookings" value={home?.confirmedBookings ?? '—'} icon={Wallet} subtitle="Waiting on agreement or sale" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {GROUPS.map((group) => {
-          const Icon = group.icon;
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {TILES.map((tile) => {
+          const Icon = tile.icon;
           return (
-            <section key={group.title} className="bg-white border border-[#0B4F3C]/15 rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#0B4F3C]/10 flex items-center gap-2">
-                <Icon className="w-4 h-4 text-[#0B4F3C]" />
-                <h3 className="text-sm font-bold text-[#0B4F3C]">{group.title}</h3>
-              </div>
-              <ul>
-                {group.items.map((item) => (
-                  <li key={item.to} className="border-t border-[#0B4F3C]/10 first:border-t-0">
-                    <Link to={item.to} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#FDFCF0]">
-                      <span>
-                        <span className="block text-sm font-bold text-[#171A18]">{item.label}</span>
-                        <span className="block text-xs text-[#171A18]/60 mt-0.5">{item.hint}</span>
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-[#0B4F3C] shrink-0" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <Link
+              key={tile.to}
+              to={tile.to}
+              className={`${tile.box} text-white rounded-2xl min-h-[92px] p-3 flex flex-col justify-between shadow-sm hover:brightness-110`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-sm font-bold leading-tight">{tile.label}</span>
+            </Link>
           );
         })}
       </div>
     </div>
   );
 };
+
+function CountBox({ label, value, box }: { label: string; value?: number; box: string }) {
+  return (
+    <div className={`${box} text-white rounded-2xl px-3 py-4 text-center shadow-sm`}>
+      <p className="font-serif text-3xl font-bold">{value ?? '—'}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wide mt-1">{label}</p>
+    </div>
+  );
+}

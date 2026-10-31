@@ -95,7 +95,7 @@ const seedDB = async () => {
       userId: adminUser._id,
       employeeCode: 'H&S-1000',
       joiningDate: new Date('2023-01-01'),
-      currentRank: 'Director Sales',
+      currentRank: 'Sales Director',
       selfSalesCount: 18,
       teamSalesCount: 145,
       activeLegsCount: 6,
@@ -116,7 +116,7 @@ const seedDB = async () => {
       userId: directorUser._id,
       employeeCode: 'EMP-1001',
       joiningDate: new Date('2023-03-15'),
-      currentRank: 'Associate Sales Director',
+      currentRank: 'Senior Sales Manager',
       selfSalesCount: 12,
       teamSalesCount: 84,
       activeLegsCount: 4,
@@ -158,7 +158,7 @@ const seedDB = async () => {
       userId: agent1User._id,
       employeeCode: 'EMP-1003',
       joiningDate: new Date('2023-09-10'),
-      currentRank: 'Sr Team Leader',
+      currentRank: 'Senior Team Leader',
       selfSalesCount: 5,
       teamSalesCount: 16,
       activeLegsCount: 3,
@@ -200,11 +200,11 @@ const seedDB = async () => {
       const parentEmp = createdEmployees[parentIndex] || adminEmp;
 
       const ranks = [
-        'Business Executive',
-        'Sr Business Executive',
+        'Advisor',
         'Team Leader',
-        'Sr Team Leader',
-        'Business Development Manager'
+        'Senior Team Leader',
+        'Business Development Manager',
+        'Sales Manager'
       ];
       const rank = ranks[Math.floor(Math.random() * ranks.length)];
 
@@ -226,13 +226,14 @@ const seedDB = async () => {
 
     // 4. Commission Plans Matrix
     await CommissionPlan.insertMany([
-      { rankName: 'Business Executive', minSelfSales: 2, minTeamSales: 0, minLegs: 0, timeLimitDays: 0, commissionPercent: 5 },
-      { rankName: 'Sr Business Executive', minSelfSales: 2, minTeamSales: 5, minLegs: 2, timeLimitDays: 0, commissionPercent: 8 },
-      { rankName: 'Team Leader', minSelfSales: 2, minTeamSales: 8, minLegs: 2, timeLimitDays: 0, commissionPercent: 10 },
-      { rankName: 'Sr Team Leader', minSelfSales: 1, minTeamSales: 12, minLegs: 3, timeLimitDays: 0, commissionPercent: 12 },
-      { rankName: 'Business Development Manager', minSelfSales: 1, minTeamSales: 20, minLegs: 3, timeLimitDays: 0, commissionPercent: 15 },
-      { rankName: 'Associate Sales Director', minSelfSales: 0, minTeamSales: 50, minLegs: 3, timeLimitDays: 60, commissionPercent: 18 },
-      { rankName: 'Director Sales', minSelfSales: 0, minTeamSales: 100, minLegs: 3, timeLimitDays: 0, commissionPercent: 20 }
+      { rankName: 'Advisor', minSelfSales: 1, minTeamSales: 0, minLegs: 0, timeLimitDays: 0, commissionPercent: 5 },
+      { rankName: 'Team Leader', minSelfSales: 1, minTeamSales: 2, minLegs: 0, timeLimitDays: 0, commissionPercent: 8 },
+      { rankName: 'Senior Team Leader', minSelfSales: 1, minTeamSales: 4, minLegs: 0, timeLimitDays: 0, commissionPercent: 10 },
+      { rankName: 'Business Development Manager', minSelfSales: 1, minTeamSales: 8, minLegs: 0, timeLimitDays: 0, commissionPercent: 12 },
+      { rankName: 'Sales Manager', minSelfSales: 1, minTeamSales: 20, minLegs: 0, timeLimitDays: 0, commissionPercent: 15 },
+      { rankName: 'Senior Sales Manager', minSelfSales: 1, minTeamSales: 50, minLegs: 0, timeLimitDays: 90, commissionPercent: 18 },
+      { rankName: 'Sales Director', minSelfSales: 1, minTeamSales: 100, minLegs: 0, timeLimitDays: 100, commissionPercent: 20 },
+      { rankName: 'Core Member', minSelfSales: 1, minTeamSales: 500, minLegs: 0, timeLimitDays: 0, commissionPercent: 5 }
     ]);
 
     // 5. Realistic Fictional Indian Plot Projects (6 Projects)
@@ -311,7 +312,7 @@ const seedDB = async () => {
       }
     ];
 
-    const planKeys = ['HIPPO_INFRA', 'RAMLOK', 'HIPPO_ENCLAVE'];
+    const planKeys = ['HOUSE_AND_SKY'];
     const insertedProjects = [];
 
     for (let pi = 0; pi < projectsData.length; pi++) {

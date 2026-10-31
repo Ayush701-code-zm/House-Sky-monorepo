@@ -118,7 +118,7 @@ export const BookingFormPage: React.FC = () => {
     <PageFrame title="New booking" note="The plot details fill in after you choose the unit. The company confirms the booking after they see the deposit photo.">
       {restored && <DraftNotice onDiscard={() => { clear(); clearDraft(DRAFT_KEY); setForm(EMPTY); setRestored(false); }} />}
       <form onSubmit={submit} className="space-y-4">
-        <section className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-4 space-y-3">
+        <section className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-[#0B4F3C]">Unit</h3>
         <label className="block text-xs font-semibold">Project
           <select className={fieldClass} value={form.projectId} onChange={(e) => setForm((prev) => ({ ...prev, projectId: e.target.value, plotId: '' }))}>
@@ -148,14 +148,14 @@ export const BookingFormPage: React.FC = () => {
           <input className={fieldClass} readOnly value={plot?.dimensions || ''} />
         </label>
         </section>
-        <section className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-4 space-y-3">
+        <section className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-[#0B4F3C]">Payment</h3>
         <label className="block text-xs font-semibold">Booking amount
           <input className={fieldClass} inputMode="numeric" value={form.bookingAmount} onChange={(e) => set('bookingAmount', e.target.value)} />
         </label>
         <FileRow label="Amount deposit photo" url={form.depositPhotoUrl} onFile={(file) => onFile('depositPhotoUrl', file)} />
         </section>
-        <section className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-4 space-y-3">
+        <section className="bg-sky-50 border border-sky-300 rounded-2xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-[#0B4F3C]">Customer</h3>
         <label className="block text-xs font-semibold">Booking date
           <input type="date" className={fieldClass} value={form.bookingDate} onChange={(e) => set('bookingDate', e.target.value)} />
@@ -182,7 +182,7 @@ export const BookingFormPage: React.FC = () => {
         <Text label="Education" value={form.education} onChange={(v) => set('education', v)} />
         <Text label="Occupation" value={form.occupation} onChange={(v) => set('occupation', v)} />
         </section>
-        <section className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-4 space-y-3">
+        <section className="bg-violet-50 border border-violet-300 rounded-2xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-[#0B4F3C]">Identity and nominee</h3>
         <Text label="PAN number" value={form.panNumber} onChange={(v) => set('panNumber', v)} />
         <Text label="Aadhaar, passport, or voter ID" value={form.idNumber} onChange={(v) => set('idNumber', v)} />

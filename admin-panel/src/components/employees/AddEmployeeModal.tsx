@@ -15,7 +15,7 @@ const EMPLOYEE_DEFAULTS = {
   email: '',
   phone: '',
   role: 'AGENT',
-  currentRank: 'Business Executive',
+  currentRank: 'Advisor',
   parentId: '',
   legNumber: 1,
 };
@@ -140,6 +140,11 @@ const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSucc
               />
             </div>
           </div>
+          {role === 'AGENT' && (
+            <p className="text-xs font-semibold text-[#0B4F3C] bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+              The same email and the same mobile can be used for up to 3 member IDs. Sign in to each one with its member ID.
+            </p>
+          )}
 
           <div>
             <label className="text-[#171A18]/70 font-semibold">Initial Password</label>

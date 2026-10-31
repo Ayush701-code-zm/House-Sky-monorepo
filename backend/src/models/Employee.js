@@ -1,13 +1,14 @@
 const mongoose = require('mongoose');
 
 const RANKS = [
-  'Business Executive',
-  'Sr Business Executive',
+  'Advisor',
   'Team Leader',
-  'Sr Team Leader',
+  'Senior Team Leader',
   'Business Development Manager',
-  'Associate Sales Director',
-  'Director Sales'
+  'Sales Manager',
+  'Senior Sales Manager',
+  'Sales Director',
+  'Core Member'
 ];
 
 const employeeSchema = new mongoose.Schema({
@@ -28,7 +29,7 @@ const employeeSchema = new mongoose.Schema({
   currentRank: {
     type: String,
     enum: RANKS,
-    default: 'Business Executive'
+    default: 'Advisor'
   },
   selfSalesCount: {
     type: Number,

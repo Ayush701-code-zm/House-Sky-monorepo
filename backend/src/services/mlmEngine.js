@@ -2,93 +2,112 @@ const mongoose = require('mongoose');
 const Employee = require('../models/Employee');
 const EmployeeHierarchy = require('../models/EmployeeHierarchy');
 
-// Rank Criteria Matrix based on Hippo Business Plan.
-// commissionPercent here is the DEFAULT (Hippo Infra / page 1) rate; per-project
-// rates come from ProjectSettings.rankOverrides. Ordered highest -> lowest.
-// rankOrder: promotion ladder index (0 = entry). assignedOnly: not auto-computed
-// from thresholds — assigned manually by the company owner (top of the tree).
+// House & Sky Business Promotion Plan. One table. Ordered highest -> lowest.
+// commissionPercent is the differential ladder rate, except Core Member: that
+// 5% is a separate turnover royalty and is not a step above 20%.
+// Senior Sales Manager must reach 50 team plots within 90 days of joining.
+// Sales Director must reach 100 team plots within 100 days of joining.
+// Core Member also needs 2 downline Sales Directors (the poster’s “+ 2”).
 const RANK_RULES = [
   {
-    rank: 'Director Sales',
-    commissionPercent: 20,
-    minSelfSales: 0,
-    minTeamSales: 0,
+    rank: 'Core Member',
+    commissionPercent: 5,
+    turnoverPercent: 5,
+    minSelfSales: 1,
+    minTeamSales: 500,
     minLegs: 0,
+    minSalesDirectors: 2,
     timeLimitDays: null,
-    rankOrder: 6,
-    assignedOnly: true
+    rankOrder: 7,
+    assignedOnly: false
   },
   {
-    rank: 'Associate Sales Director',
+    rank: 'Sales Director',
+    commissionPercent: 20,
+    minSelfSales: 1,
+    minTeamSales: 100,
+    minLegs: 0,
+    minSalesDirectors: 0,
+    timeLimitDays: 100,
+    rankOrder: 6,
+    assignedOnly: false
+  },
+  {
+    rank: 'Senior Sales Manager',
     commissionPercent: 18,
-    minSelfSales: 0,
+    minSelfSales: 1,
     minTeamSales: 50,
-    minLegs: 3,
-    timeLimitDays: 60,
+    minLegs: 0,
+    minSalesDirectors: 0,
+    timeLimitDays: 90,
     rankOrder: 5,
     assignedOnly: false
   },
   {
-    rank: 'Business Development Manager',
+    rank: 'Sales Manager',
     commissionPercent: 15,
     minSelfSales: 1,
     minTeamSales: 20,
-    minLegs: 3,
+    minLegs: 0,
+    minSalesDirectors: 0,
     timeLimitDays: null,
     rankOrder: 4,
     assignedOnly: false
   },
   {
-    rank: 'Sr Team Leader',
+    rank: 'Business Development Manager',
     commissionPercent: 12,
     minSelfSales: 1,
-    minTeamSales: 12,
-    minLegs: 3,
+    minTeamSales: 8,
+    minLegs: 0,
+    minSalesDirectors: 0,
     timeLimitDays: null,
     rankOrder: 3,
     assignedOnly: false
   },
   {
-    rank: 'Team Leader',
+    rank: 'Senior Team Leader',
     commissionPercent: 10,
-    minSelfSales: 2,
-    minTeamSales: 8,
-    minLegs: 2,
+    minSelfSales: 1,
+    minTeamSales: 4,
+    minLegs: 0,
+    minSalesDirectors: 0,
     timeLimitDays: null,
     rankOrder: 2,
     assignedOnly: false
   },
   {
-    rank: 'Sr Business Executive',
+    rank: 'Team Leader',
     commissionPercent: 8,
-    minSelfSales: 2,
-    minTeamSales: 5,
-    minLegs: 2,
+    minSelfSales: 1,
+    minTeamSales: 2,
+    minLegs: 0,
+    minSalesDirectors: 0,
     timeLimitDays: null,
     rankOrder: 1,
     assignedOnly: false
   },
   {
-    rank: 'Business Executive',
+    rank: 'Advisor',
     commissionPercent: 5,
-    minSelfSales: 2,
+    minSelfSales: 1,
     minTeamSales: 0,
     minLegs: 0,
+    minSalesDirectors: 0,
     timeLimitDays: null,
     rankOrder: 0,
     assignedOnly: false
   }
 ];
 
-// Label used for a member who has not yet met even the entry (BE) criteria.
-// They keep this label and earn 0% until qualified — see isRankQualified().
-const ENTRY_RANK = 'Business Executive';
+const ENTRY_RANK = 'Advisor';
+const SALES_DIRECTOR_RANKS = ['Sales Director', 'Core Member'];
 
 /**
  * Is an employee genuinely qualified for a rank given their live metrics?
  * Used by the commission engine so an under-qualified member (e.g. 0 self
- * sales but labelled Business Executive) never absorbs a commission slice.
- * assignedOnly ranks (Director Sales) are always considered qualified.
+ * sales but labelled Advisor) never absorbs a commission slice.
+ * assignedOnly ranks, if any, are always considered qualified.
  */
 function isRankQualified(rankName, metrics) {
   const rule = RANK_RULES.find((r) => r.rank === rankName);
@@ -97,8 +116,19 @@ function isRankQualified(rankName, metrics) {
   return (
     (metrics.selfSalesCount || 0) >= rule.minSelfSales &&
     (metrics.teamSalesCount || 0) >= rule.minTeamSales &&
-    (metrics.activeLegsCount || 0) >= rule.minLegs
+    (metrics.activeLegsCount || 0) >= rule.minLegs &&
+    (metrics.salesDirectorCount || 0) >= (rule.minSalesDirectors || 0)
   );
+}
+
+/** Downline members already at Sales Director or Core Member. */
+async function countSeniorSalesDirectors(employeeId) {
+  const ids = await getDownlineEmployeeIds(employeeId);
+  if (!ids.length) return 0;
+  return Employee.countDocuments({
+    _id: { $in: ids },
+    currentRank: { $in: SALES_DIRECTOR_RANKS }
+  });
 }
 
 /**
@@ -173,17 +203,16 @@ async function evaluateAndUpgradeRank(employeeId) {
     (Date.now() - new Date(metrics.joiningDate).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // Find the highest rank the member currently QUALIFIES for. assignedOnly ranks
-  // (Director Sales) are excluded — those are assigned manually by the owner.
-  // The 2-month (60 day) window on ASD is a qualification gate, not a demotion
-  // trigger: ranks are promotion-only and never auto-downgraded below what was
-  // already earned.
+  // Highest rank this member qualifies for. Time windows block promotion only.
+  // A rank already earned is never removed after the window closes.
+  const salesDirectorCount = await countSeniorSalesDirectors(employeeId);
   let candidate = null;
   for (const rule of RANK_RULES) {
     if (rule.assignedOnly) continue;
     if (metrics.selfSalesCount < rule.minSelfSales) continue;
     if (metrics.teamSalesCount < rule.minTeamSales) continue;
     if (metrics.activeLegsCount < rule.minLegs) continue;
+    if ((rule.minSalesDirectors || 0) > salesDirectorCount) continue;
     if (rule.timeLimitDays !== null && daysSinceJoining > rule.timeLimitDays) continue;
 
     candidate = rule;
@@ -285,7 +314,9 @@ async function getMLMTree(rootEmployeeId = null) {
 module.exports = {
   RANK_RULES,
   ENTRY_RANK,
+  SALES_DIRECTOR_RANKS,
   isRankQualified,
+  countSeniorSalesDirectors,
   calculateEmployeeSalesMetrics,
   evaluateAndUpgradeRank,
   getDownlineEmployeeIds,

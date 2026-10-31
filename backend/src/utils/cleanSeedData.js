@@ -75,7 +75,7 @@ const cleanSeedDB = async () => {
       userId: adminUser._id,
       employeeCode: 'EMP-1000',
       joiningDate: new Date('2023-01-01'),
-      currentRank: 'Director Sales',
+      currentRank: 'Sales Director',
       selfSalesCount: 0,
       teamSalesCount: 0,
       activeLegsCount: 0,
@@ -86,13 +86,14 @@ const cleanSeedDB = async () => {
 
     // 3. Commission Plans Matrix
     await CommissionPlan.insertMany([
-      { rankName: 'Business Executive', minSelfSales: 2, minTeamSales: 0, minLegs: 0, timeLimitDays: 0, commissionPercent: 5 },
-      { rankName: 'Sr Business Executive', minSelfSales: 2, minTeamSales: 5, minLegs: 2, timeLimitDays: 0, commissionPercent: 8 },
-      { rankName: 'Team Leader', minSelfSales: 2, minTeamSales: 8, minLegs: 2, timeLimitDays: 0, commissionPercent: 10 },
-      { rankName: 'Sr Team Leader', minSelfSales: 1, minTeamSales: 12, minLegs: 3, timeLimitDays: 0, commissionPercent: 12 },
-      { rankName: 'Business Development Manager', minSelfSales: 1, minTeamSales: 20, minLegs: 3, timeLimitDays: 0, commissionPercent: 15 },
-      { rankName: 'Associate Sales Director', minSelfSales: 0, minTeamSales: 50, minLegs: 3, timeLimitDays: 60, commissionPercent: 18 },
-      { rankName: 'Director Sales', minSelfSales: 0, minTeamSales: 100, minLegs: 3, timeLimitDays: 0, commissionPercent: 20 }
+      { rankName: 'Advisor', minSelfSales: 1, minTeamSales: 0, minLegs: 0, timeLimitDays: 0, commissionPercent: 5 },
+      { rankName: 'Team Leader', minSelfSales: 1, minTeamSales: 2, minLegs: 0, timeLimitDays: 0, commissionPercent: 8 },
+      { rankName: 'Senior Team Leader', minSelfSales: 1, minTeamSales: 4, minLegs: 0, timeLimitDays: 0, commissionPercent: 10 },
+      { rankName: 'Business Development Manager', minSelfSales: 1, minTeamSales: 8, minLegs: 0, timeLimitDays: 0, commissionPercent: 12 },
+      { rankName: 'Sales Manager', minSelfSales: 1, minTeamSales: 20, minLegs: 0, timeLimitDays: 0, commissionPercent: 15 },
+      { rankName: 'Senior Sales Manager', minSelfSales: 1, minTeamSales: 50, minLegs: 0, timeLimitDays: 90, commissionPercent: 18 },
+      { rankName: 'Sales Director', minSelfSales: 1, minTeamSales: 100, minLegs: 0, timeLimitDays: 100, commissionPercent: 20 },
+      { rankName: 'Core Member', minSelfSales: 1, minTeamSales: 500, minLegs: 0, timeLimitDays: 0, commissionPercent: 5 }
     ]);
 
     // 4. Seed 3 Clean Master Projects with AVAILABLE plots for fresh testing

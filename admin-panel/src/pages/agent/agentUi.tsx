@@ -7,12 +7,12 @@ export const fieldClass = 'w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 r
 export function PageFrame({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-5 pb-10">
-      <div className="flex items-end justify-between gap-3">
+      <div className="rounded-2xl bg-[#0B4F3C] text-white px-5 py-4 flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-[#171A18]">{title}</h2>
-          {note && <p className="text-xs text-[#171A18]/70 mt-1">{note}</p>}
+          <h2 className="text-2xl font-serif font-bold">{title}</h2>
+          {note && <p className="text-xs text-white/75 mt-1">{note}</p>}
         </div>
-        <Link to="/agent" className="text-xs font-bold text-[#0B4F3C] bg-[#E8F0EC] rounded-full px-3 py-1.5">Desk</Link>
+        <Link to="/agent" className="text-xs font-bold text-[#171A18] bg-[#C6A15B] rounded-full px-3 py-1.5 shrink-0">Desk</Link>
       </div>
       {children}
     </div>

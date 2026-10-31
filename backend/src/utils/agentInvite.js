@@ -5,13 +5,13 @@ const User = require('../models/User');
 const INVITE_CODE_BYTES = 6;
 const APPROVED_STATUS = 'APPROVED';
 const RANK_BY_ROLE = {
-  ADMIN: 'Director Sales',
-  DIRECTOR: 'Director Sales',
-  MANAGER: 'Business Development Manager',
-  EMPLOYEE: 'Business Executive',
-  AGENT: 'Business Executive'
+  ADMIN: 'Advisor',
+  DIRECTOR: 'Advisor',
+  MANAGER: 'Advisor',
+  EMPLOYEE: 'Advisor',
+  AGENT: 'Advisor'
 };
-const DEFAULT_RANK = 'Business Executive';
+const DEFAULT_RANK = 'Advisor';
 const EMPLOYEE_CODE_PREFIX = 'H&S-';
 const EMPLOYEE_CODE_START = 1000;
 
@@ -165,11 +165,46 @@ function phoneDigits(value) {
 }
 
 /** Same digits with spaces or a leading + still count as one mobile number. */
-async function findUserByPhone(phone) {
+function phoneFilter(phone) {
   const digits = phoneDigits(phone);
   if (digits.length < 5 || digits.length > 20) return null;
-  const pattern = `^\\D*${digits.split('').join('\\D*')}\\D*$`;
-  return User.findOne({ phone: { $regex: pattern } }).select('_id');
+  return { phone: { $regex: `^\\D*${digits.split('').join('\\D*')}\\D*$` } };
+}
+
+async function findUserByPhone(phone) {
+  const filter = phoneFilter(phone);
+  if (!filter) return null;
+  return User.findOne(filter).select('_id');
+}
+
+const MAX_AGENT_IDS_PER_CONTACT = 3;
+
+/**
+ * One email together with one mobile may belong to three AGENT member IDs.
+ * A fourth ID, a different pairing, or a staff login on that contact is refused.
+ * Returns an error message, or null when another agent ID is allowed.
+ */
+async function agentContactSlot(email, phone) {
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const digits = phoneDigits(phone);
+  const byEmail = normalizedEmail ? await User.find({ email: normalizedEmail }) : [];
+  const phoneQuery = phoneFilter(phone);
+  const byPhone = phoneQuery ? await User.find(phoneQuery) : [];
+  const seen = new Map();
+  [...byEmail, ...byPhone].forEach((user) => seen.set(String(user._id), user));
+  const users = [...seen.values()];
+  if (!users.length) return null;
+  if (users.some((user) => user.role !== 'AGENT')) {
+    return 'This email or mobile already belongs to a staff login.';
+  }
+  const samePair = users.every((user) => user.email === normalizedEmail && phoneDigits(user.phone) === digits);
+  if (!samePair) {
+    return 'This email and mobile are already used on different member IDs.';
+  }
+  if (users.length >= MAX_AGENT_IDS_PER_CONTACT) {
+    return 'This email and mobile already have 3 member IDs.';
+  }
+  return null;
 }
 
 module.exports = {
@@ -181,6 +216,8 @@ module.exports = {
   resolveSponsorByEmployeeCode,
   resolvePublicSponsor,
   findUserByPhone,
+  agentContactSlot,
+  MAX_AGENT_IDS_PER_CONTACT,
   publicSponsorPayload,
   publicSponsorLookupPayload,
   sponsorCodeCandidates

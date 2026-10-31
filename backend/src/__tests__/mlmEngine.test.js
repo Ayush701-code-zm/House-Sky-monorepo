@@ -1,34 +1,56 @@
 const { RANK_RULES } = require('../services/mlmEngine');
 
-describe('Hippo MLM Business Engine Rules Matrix Test', () => {
-  test('Verify all 7 ranks are defined according to Hippo Business Rules', () => {
-    expect(RANK_RULES.length).toBe(7);
+describe('House & Sky promotion plan', () => {
+  test('defines the eight poster ranks', () => {
+    expect(RANK_RULES.map((rule) => rule.rank).sort()).toEqual([
+      'Advisor',
+      'Business Development Manager',
+      'Core Member',
+      'Sales Director',
+      'Sales Manager',
+      'Senior Sales Manager',
+      'Senior Team Leader',
+      'Team Leader'
+    ].sort());
+  });
 
-    const ds = RANK_RULES.find(r => r.rank === 'Director Sales');
-    expect(ds.commissionPercent).toBe(20);
+  test('Advisor is 1 self sale at 5%', () => {
+    const advisor = RANK_RULES.find((rule) => rule.rank === 'Advisor');
+    expect(advisor.commissionPercent).toBe(5);
+    expect(advisor.minSelfSales).toBe(1);
+    expect(advisor.minTeamSales).toBe(0);
+    expect(advisor.minLegs).toBe(0);
+  });
 
-    const asd = RANK_RULES.find(r => r.rank === 'Associate Sales Director');
-    expect(asd.commissionPercent).toBe(18);
-    expect(asd.minTeamSales).toBe(50);
-    expect(asd.minLegs).toBe(3);
-    expect(asd.timeLimitDays).toBe(60);
+  test('Team Leader is 1 self and 2 team at 8%', () => {
+    const rule = RANK_RULES.find((item) => item.rank === 'Team Leader');
+    expect(rule.commissionPercent).toBe(8);
+    expect(rule.minSelfSales).toBe(1);
+    expect(rule.minTeamSales).toBe(2);
+  });
 
-    const bdm = RANK_RULES.find(r => r.rank === 'Business Development Manager');
-    expect(bdm.commissionPercent).toBe(15);
-    expect(bdm.minSelfSales).toBe(1);
-    expect(bdm.minTeamSales).toBe(20);
+  test('Senior Sales Manager must be reached within 90 days', () => {
+    const rule = RANK_RULES.find((item) => item.rank === 'Senior Sales Manager');
+    expect(rule.commissionPercent).toBe(18);
+    expect(rule.minTeamSales).toBe(50);
+    expect(rule.timeLimitDays).toBe(90);
+  });
 
-    const stl = RANK_RULES.find(r => r.rank === 'Sr Team Leader');
-    expect(stl.commissionPercent).toBe(12);
+  test('Sales Director must be reached within 100 days', () => {
+    const rule = RANK_RULES.find((item) => item.rank === 'Sales Director');
+    expect(rule.commissionPercent).toBe(20);
+    expect(rule.minSelfSales).toBe(1);
+    expect(rule.minTeamSales).toBe(100);
+    expect(rule.timeLimitDays).toBe(100);
+    expect(rule.assignedOnly).toBe(false);
+  });
 
-    const tl = RANK_RULES.find(r => r.rank === 'Team Leader');
-    expect(tl.commissionPercent).toBe(10);
-
-    const sbe = RANK_RULES.find(r => r.rank === 'Sr Business Executive');
-    expect(sbe.commissionPercent).toBe(8);
-
-    const be = RANK_RULES.find(r => r.rank === 'Business Executive');
-    expect(be.commissionPercent).toBe(5);
-    expect(be.minSelfSales).toBe(2);
+  test('Core Member is 5% turnover plus 2 Sales Directors, not another 20%', () => {
+    const rule = RANK_RULES.find((item) => item.rank === 'Core Member');
+    expect(rule.commissionPercent).toBe(5);
+    expect(rule.turnoverPercent).toBe(5);
+    expect(rule.minSelfSales).toBe(1);
+    expect(rule.minTeamSales).toBe(500);
+    expect(rule.minSalesDirectors).toBe(2);
   });
 });

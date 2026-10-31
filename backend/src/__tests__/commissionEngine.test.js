@@ -12,50 +12,61 @@ describe('roundMoney — integer-paise money safety', () => {
 });
 
 describe('isRankQualified — under-qualified members earn nothing', () => {
-  test('a 0-sale member labelled Business Executive is NOT qualified', () => {
-    expect(isRankQualified('Business Executive', {
+  test('a 0-sale Advisor is not qualified', () => {
+    expect(isRankQualified('Advisor', {
       selfSalesCount: 0, teamSalesCount: 0, activeLegsCount: 0
     })).toBe(false);
   });
 
-  test('Business Executive qualifies at exactly 2 self sales', () => {
-    expect(isRankQualified('Business Executive', {
-      selfSalesCount: 2, teamSalesCount: 0, activeLegsCount: 0
+  test('Advisor qualifies at 1 self sale', () => {
+    expect(isRankQualified('Advisor', {
+      selfSalesCount: 1, teamSalesCount: 0, activeLegsCount: 0
     })).toBe(true);
   });
 
-  test('Team Leader needs self>=2, team>=8, legs>=2', () => {
+  test('Team Leader needs 1 self and 2 team, with no leg requirement', () => {
     expect(isRankQualified('Team Leader', {
-      selfSalesCount: 2, teamSalesCount: 8, activeLegsCount: 2
+      selfSalesCount: 1, teamSalesCount: 2, activeLegsCount: 0
     })).toBe(true);
     expect(isRankQualified('Team Leader', {
-      selfSalesCount: 2, teamSalesCount: 7, activeLegsCount: 2
+      selfSalesCount: 1, teamSalesCount: 1, activeLegsCount: 0
     })).toBe(false);
   });
 
-  test('Director Sales is assign-only and always treated as qualified', () => {
-    expect(isRankQualified('Director Sales', {
+  test('Sales Director is not paid with zero sales', () => {
+    expect(isRankQualified('Sales Director', {
       selfSalesCount: 0, teamSalesCount: 0, activeLegsCount: 0
+    })).toBe(false);
+  });
+
+  test('Core Member needs 2 Sales Directors in the team', () => {
+    expect(isRankQualified('Core Member', {
+      selfSalesCount: 1, teamSalesCount: 500, activeLegsCount: 0, salesDirectorCount: 1
+    })).toBe(false);
+    expect(isRankQualified('Core Member', {
+      selfSalesCount: 1, teamSalesCount: 500, activeLegsCount: 0, salesDirectorCount: 2
     })).toBe(true);
   });
 });
 
-describe('Per-project commission tables (Hippo Business Plan)', () => {
-  test('three distinct tables exist with the plan rates', () => {
-    expect(COMMISSION_TABLES.HIPPO_INFRA['Director Sales']).toBe(20);
-    expect(COMMISSION_TABLES.RAMLOK['Director Sales']).toBe(15);
-    expect(COMMISSION_TABLES.HIPPO_ENCLAVE['Director Sales']).toBe(12);
-
-    expect(COMMISSION_TABLES.HIPPO_INFRA['Business Executive']).toBe(5);
-    expect(COMMISSION_TABLES.RAMLOK['Business Executive']).toBe(5);
-    expect(COMMISSION_TABLES.HIPPO_ENCLAVE['Business Executive']).toBe(2);
+describe('House & Sky commission table', () => {
+  test('one table carries the poster rates', () => {
+    expect(Object.keys(COMMISSION_TABLES)).toEqual(['HOUSE_AND_SKY']);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY.Advisor).toBe(5);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Team Leader']).toBe(8);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Senior Team Leader']).toBe(10);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Business Development Manager']).toBe(12);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Sales Manager']).toBe(15);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Senior Sales Manager']).toBe(18);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Sales Director']).toBe(20);
+    expect(COMMISSION_TABLES.HOUSE_AND_SKY['Core Member']).toBe(5);
   });
 
-  test('tableToRankOverrides produces a full 7-rank override array', () => {
-    const overrides = tableToRankOverrides('RAMLOK');
-    expect(overrides).toHaveLength(7);
-    const tl = overrides.find((o) => o.rank === 'Team Leader');
-    expect(tl.commissionPercent).toBe(9); // Ramlok TL = 9%, not the default 10%
+  test('tableToRankOverrides produces the eight poster ranks', () => {
+    const overrides = tableToRankOverrides('HOUSE_AND_SKY');
+    expect(overrides).toHaveLength(8);
+    const leader = overrides.find((row) => row.rank === 'Team Leader');
+    expect(leader.commissionPercent).toBe(8);
   });
 });
 

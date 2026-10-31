@@ -47,7 +47,7 @@ async function createAdmin() {
           userId: admin._id,
           employeeCode: `H&S-${Math.floor(1000 + Math.random() * 9000)}`,
           joiningDate: new Date(),
-          currentRank: 'Director Sales',
+          currentRank: 'Advisor',
           selfSalesCount: 0,
           teamSalesCount: 0,
           activeLegsCount: 0

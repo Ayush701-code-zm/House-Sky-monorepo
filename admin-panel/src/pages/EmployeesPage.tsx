@@ -131,7 +131,7 @@ export const EmployeesPage: React.FC = () => {
   const totalAgents = employees.length;
   const pendingApprovalsCount = employees.filter((e) => (e.userId as any)?.approvalStatus === 'PENDING_APPROVAL').length;
   const directorsCount = employees.filter(
-    (e) => e.currentRank === 'Director Sales' || e.currentRank === 'Associate Sales Director'
+    (e) => e.currentRank === 'Sales Director' || e.currentRank === 'Core Member'
   ).length;
   const totalSelfSales = employees.reduce((sum, e) => sum + (e.selfSalesCount || 0), 0);
 
@@ -363,7 +363,7 @@ export const EmployeesPage: React.FC = () => {
                       </td>
                       <td className="p-3">
                         <span className="px-2.5 py-0.5 rounded-full bg-[#E8F0EC] text-[#0B4F3C] font-bold text-[10px] border border-[#0B4F3C]/20">
-                          {emp.currentRank || 'Business Executive'}
+                          {emp.currentRank || 'Advisor'}
                         </span>
                       </td>
                       <td className="p-3">

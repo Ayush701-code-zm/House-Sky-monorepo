@@ -63,7 +63,7 @@ export const PlotAvailabilityPage: React.FC = () => {
       </div>
 
       {project && (project.paymentQrUrl || project.bankDetails) && (
-        <div className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-4 md:flex md:items-start md:gap-6">
+        <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 md:flex md:items-start md:gap-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#0B4F3C]">Collection account</p>
             {project.bankDetails && <p className="text-sm mt-2 whitespace-pre-wrap text-[#171A18]">{project.bankDetails}</p>}
@@ -73,7 +73,7 @@ export const PlotAvailabilityPage: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white border border-[#0B4F3C]/15 rounded-2xl overflow-hidden">
+        <div className="lg:col-span-2 bg-emerald-50 border border-emerald-200 rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-[#FDFCF0] text-[10px] uppercase tracking-wider text-[#0B4F3C]">
               <tr>
@@ -99,7 +99,7 @@ export const PlotAvailabilityPage: React.FC = () => {
           </table>
         </div>
 
-        <aside className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-5 h-fit">
+        <aside className="bg-amber-50 border border-amber-200 rounded-2xl p-5 h-fit">
           {selected ? (
             <div className="space-y-2 text-sm">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#0B4F3C]">Plot {selected.plotNo}</p>

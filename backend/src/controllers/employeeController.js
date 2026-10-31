@@ -2,7 +2,7 @@ const Employee = require('../models/Employee');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { calculateEmployeeSalesMetrics, evaluateAndUpgradeRank, getDownlineEmployeeIds } = require('../services/mlmEngine');
-const { ensureInviteCode, findOrCreateSponsorEmployee, resolveSponsorByInviteCode, resolveSponsorByEmployeeCode, publicSponsorPayload, publicSponsorLookupPayload, generateEmployeeCode, findUserByPhone } = require('../utils/agentInvite');
+const { ensureInviteCode, findOrCreateSponsorEmployee, resolveSponsorByInviteCode, resolveSponsorByEmployeeCode, publicSponsorPayload, publicSponsorLookupPayload, generateEmployeeCode, findUserByPhone, agentContactSlot } = require('../utils/agentInvite');
 const { queryString, containsRegex } = require('../utils/queryUtils');
 
 const FULL_ACCESS_ROLES = ['ADMIN', 'DIRECTOR'];
@@ -70,20 +70,24 @@ exports.createEmployee = async (req, res, next) => {
   try {
     const { fullName, email, phone, password, role, parentId, legNumber, joiningDate, currentRank } = req.body;
 
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: 'User with this email already exists' });
-    }
-    if (phone && await findUserByPhone(phone)) {
-      return res.status(400).json({ message: 'An account with this mobile number already exists' });
-    }
-
     const isAdmin = req.user && ['ADMIN', 'DIRECTOR'].includes(req.user.role);
     const loggedInEmployee = req.user ? await Employee.findOne({ userId: req.user._id }) : null;
 
     // SECURITY: only an admin may assign a privileged role. Agents can only ever
     // create AGENT accounts, and only attach them directly under themselves.
     const safeRole = isAdmin ? (role || 'AGENT') : 'AGENT';
+
+    if (safeRole === 'AGENT') {
+      const slot = await agentContactSlot(email, phone);
+      if (slot) return res.status(400).json({ message: slot });
+    } else {
+      if (await User.findOne({ email: String(email || '').toLowerCase().trim() })) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+      if (phone && await findUserByPhone(phone)) {
+        return res.status(400).json({ message: 'An account with this mobile number already exists' });
+      }
+    }
 
     let sponsorParentId;
     if (isAdmin) {
@@ -102,18 +106,19 @@ exports.createEmployee = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password || 'Password123!', salt);
 
     // Note: Direct onboarding by an existing agent or admin creates an immediately APPROVED & ACTIVE agent!
-    user = await User.create({
+    let user = await User.create({
       email,
       password: hashedPassword,
       fullName,
       phone,
       role: safeRole,
       isActive: true,
-      approvalStatus: 'APPROVED'
+      approvalStatus: 'APPROVED',
+      isVerified: true
     });
 
     // Admins may pick the starting rank in the onboarding form; agents cannot.
-    const initialRank = isAdmin && Employee.RANKS.includes(currentRank) ? currentRank : 'Business Executive';
+    const initialRank = isAdmin && Employee.RANKS.includes(currentRank) ? currentRank : 'Advisor';
     const parsedLeg = parseInt(legNumber, 10);
 
     let employee;

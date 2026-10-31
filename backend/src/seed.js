@@ -37,7 +37,7 @@ async function seed() {
         userId: adminUser._id,
         employeeCode: 'EMP-1000',
         joiningDate: new Date(),
-        currentRank: 'Director Sales',
+        currentRank: 'Advisor',
         selfSalesCount: 15,
         teamSalesCount: 42,
         activeLegsCount: 4
@@ -63,7 +63,7 @@ async function seed() {
         userId: agentUser._id,
         employeeCode: 'EMP-1001',
         joiningDate: new Date(),
-        currentRank: 'Associate Sales Director',
+        currentRank: 'Senior Sales Manager',
         parentId: adminEmp ? adminEmp._id : null,
         selfSalesCount: 8,
         teamSalesCount: 18,

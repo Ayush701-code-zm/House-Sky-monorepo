@@ -59,7 +59,7 @@ export const AgentProfileModal: React.FC<AgentProfileModalProps> = ({
       const server: AgentDraft = {
         fullName: emp.userId?.fullName || '',
         phone: emp.userId?.phone || '',
-        currentRank: emp.currentRank || 'Business Executive',
+        currentRank: emp.currentRank || 'Advisor',
         parentId: emp.parentId && typeof emp.parentId === 'object' ? (emp.parentId as any)._id || (emp.parentId as any).id : (emp.parentId || ''),
         legNumber: emp.legNumber || 1,
       };

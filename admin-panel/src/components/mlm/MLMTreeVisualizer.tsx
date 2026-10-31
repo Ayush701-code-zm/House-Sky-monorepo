@@ -11,12 +11,14 @@ const TreeNodeCard: React.FC<{ node: MLMTreeNode; level: number }> = ({ node, le
 
   const getRankColor = (rank: string) => {
     switch (rank) {
-      case 'Director Sales': return 'from-[#0B4F3C] to-[#063B2D] text-white border-[#0B4F3C]';
-      case 'Associate Sales Director': return 'from-sky-700 to-sky-900 text-white border-sky-800';
+      case 'Core Member': return 'from-[#C6A15B] to-[#8C6A2F] text-[#171A18] border-[#C6A15B]';
+      case 'Sales Director': return 'from-[#0B4F3C] to-[#063B2D] text-white border-[#0B4F3C]';
+      case 'Senior Sales Manager': return 'from-sky-700 to-sky-900 text-white border-sky-800';
+      case 'Sales Manager': return 'from-cyan-700 to-sky-800 text-white border-cyan-700';
       case 'Business Development Manager': return 'from-emerald-700 to-teal-900 text-white border-emerald-800';
-      case 'Sr Team Leader': return 'from-emerald-600 to-teal-700 text-white border-emerald-600';
+      case 'Senior Team Leader': return 'from-emerald-600 to-teal-700 text-white border-emerald-600';
       case 'Team Leader': return 'from-green-600 to-emerald-700 text-white border-green-600';
-      case 'Sr Business Executive': return 'from-amber-600 to-orange-700 text-white border-amber-600';
+      case 'Advisor': return 'from-amber-600 to-orange-700 text-white border-amber-600';
       default: return 'from-slate-700 to-slate-800 text-white border-slate-600';
     }
   };

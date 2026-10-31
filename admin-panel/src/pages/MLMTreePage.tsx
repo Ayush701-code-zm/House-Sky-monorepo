@@ -55,7 +55,7 @@ export const MLMTreePage: React.FC = () => {
   };
 
   const salesDirectors = employees.filter(
-    (e) => e.currentRank === 'Director Sales' || e.currentRank === 'Associate Sales Director'
+    (e) => e.currentRank === 'Sales Director' || e.currentRank === 'Core Member'
   );
 
   return (

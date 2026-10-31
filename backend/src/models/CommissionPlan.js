@@ -20,7 +20,7 @@ const commissionPlanSchema = new mongoose.Schema({
   },
   timeLimitDays: {
     type: Number,
-    default: 0 // 60 for Associate Sales Director (2 months)
+    default: 0 // 90 days for Senior Sales Manager, 100 days for Sales Director
   },
   commissionPercent: {
     type: Number,

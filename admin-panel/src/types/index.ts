@@ -8,13 +8,14 @@ export interface User {
 }
 
 export const RANKS = [
-  'Business Executive',
-  'Sr Business Executive',
+  'Advisor',
   'Team Leader',
-  'Sr Team Leader',
+  'Senior Team Leader',
   'Business Development Manager',
-  'Associate Sales Director',
-  'Director Sales'
+  'Sales Manager',
+  'Senior Sales Manager',
+  'Sales Director',
+  'Core Member'
 ];
 
 export type KycStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
