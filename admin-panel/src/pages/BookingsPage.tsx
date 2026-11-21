@@ -70,7 +70,10 @@ export const BookingsPage: React.FC = () => {
           <article key={row._id} className="bg-white border border-[#0B4F3C]/15 rounded-2xl p-4 space-y-2">
             <p className="font-bold">{row.customerName} · {row.mobile}</p>
             <p className="text-sm">{row.projectId?.name} · plot {row.plotId?.plotNo} · {row.plotId?.status} · {row.status}</p>
-            <p className="text-sm">{rupee(row.bookingAmount)} · agent {row.agentEmployeeId?.employeeCode}</p>
+            <p className="text-sm">
+              {rupee(row.bookingAmount)} · main {row.agentEmployeeId?.employeeCode}
+              {row.secondaryAgentEmployeeId?.employeeCode ? ` · secondary ${row.secondaryAgentEmployeeId.employeeCode}` : ''}
+            </p>
             {row.depositPhotoUrl && <a className="text-sm text-[#0B4F3C] underline" href={row.depositPhotoUrl} target="_blank" rel="noreferrer">Deposit photo</a>}
             <div className="flex flex-wrap gap-2 text-xs font-bold">
               {row.status === 'PENDING_VERIFICATION' && (

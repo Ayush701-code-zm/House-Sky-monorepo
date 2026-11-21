@@ -15,6 +15,9 @@ interface SponsorSearchFieldProps {
   allowEmpty?: boolean;
   excludeId?: string;
   inputId?: string;
+  emptyHint?: string;
+  placeholder?: string;
+  missLabel?: string;
 }
 
 function employeeKey(emp: { id?: string; _id?: string }) {
@@ -38,6 +41,9 @@ export const SponsorSearchField: React.FC<SponsorSearchFieldProps> = ({
   allowEmpty = false,
   excludeId,
   inputId,
+  emptyHint,
+  placeholder = 'Name or member ID',
+  missLabel = 'No matching sponsor.',
 }) => {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<SponsorHit[]>([]);
@@ -130,7 +136,7 @@ export const SponsorSearchField: React.FC<SponsorSearchFieldProps> = ({
           type="text"
           value={query}
           autoComplete="off"
-          placeholder="Name or member ID"
+          placeholder={placeholder}
           onChange={(e) => {
             const next = e.target.value;
             setQuery(next);
@@ -172,13 +178,15 @@ export const SponsorSearchField: React.FC<SponsorSearchFieldProps> = ({
           <span className="font-medium text-[#171A18]/60"> · {confirmed.employeeCode}{confirmed.currentRank ? ` · ${confirmed.currentRank}` : ''}</span>
         </p>
       ) : query.trim() && !loading && searched === query.trim() && hits.length === 0 ? (
-        <p className="text-[11px] font-semibold text-red-700 mt-1.5">No matching sponsor.</p>
+        <p className="text-[11px] font-semibold text-red-700 mt-1.5">{missLabel}</p>
       ) : allowEmpty ? (
-        <p className="text-[10px] text-[#171A18]/50 mt-1">Leave blank to place this agent at the top of the network.</p>
+        <p className="text-[10px] text-[#171A18]/50 mt-1">
+          {emptyHint || 'Leave blank to place this agent at the top of the network.'}
+        </p>
       ) : null}
       {allowEmpty && value ? (
         <button type="button" onClick={clearSponsor} className="mt-1 text-[10px] font-bold text-[#0B4F3C] underline cursor-pointer">
-          Clear sponsor
+          Clear
         </button>
       ) : null}
     </div>

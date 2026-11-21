@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 
 export const fieldClass = 'w-full mt-1 bg-[#FDFCF0] border border-[#0B4F3C]/20 rounded-xl px-3 py-2 text-sm text-[#171A18] font-semibold focus:outline-none focus:border-[#0B4F3C]';
+export const panelClass = 'bg-[#E8F0EC] border border-[#0B4F3C]/25 rounded-2xl';
+export const panelItemClass = 'bg-[#E8F0EC] border border-[#0B4F3C]/20 rounded-xl';
 
 export function PageFrame({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (

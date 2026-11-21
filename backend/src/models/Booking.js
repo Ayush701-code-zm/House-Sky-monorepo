@@ -7,6 +7,7 @@ const bookingSchema = new mongoose.Schema({
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   plotId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plot', required: true },
   agentEmployeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+  secondaryAgentEmployeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
   status: { type: String, enum: BOOKING_STATUSES, default: 'PENDING_VERIFICATION' },
   floorNo: { type: String, default: '' },
   plotType: { type: String, default: '' },

@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../services/api';
 import { DraftNotice } from '../../components/common/DraftNotice';
+import { SponsorSearchField } from '../../components/employees/SponsorSearchField';
+import { useAuth } from '../../context/AuthContext';
 import { clearDraft } from '../../utils/formDraft';
 import { mergeDraft, usePersistDraft } from '../../utils/useFormDraft';
-import { fieldClass, PageFrame, uploadImage } from './agentUi';
+import { fieldClass, PageFrame, panelClass, uploadImage } from './agentUi';
 
 const DRAFT_KEY = 'hs-admin-booking-new';
 const EMPTY = {
@@ -40,10 +42,12 @@ const EMPTY = {
   passportPhotoUrl: '',
   addressProofUrl: '',
   idDocUrls: [] as string[],
+  secondaryAgentEmployeeId: '',
   termsAccepted: false,
 };
 
 export const BookingFormPage: React.FC = () => {
+  const { user, employee } = useAuth();
   const boot = useMemo(() => mergeDraft(DRAFT_KEY, EMPTY), []);
   const [form, setForm] = useState(boot.value);
   const [restored, setRestored] = useState(boot.restored);
@@ -53,6 +57,10 @@ export const BookingFormPage: React.FC = () => {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const clear = usePersistDraft(DRAFT_KEY, form, EMPTY);
+
+  const mainCode = employee?.employeeCode || '—';
+  const mainName = user?.fullName || employee?.employeeCode || 'Logged-in agent';
+  const mainId = employee?.id || '';
 
   useEffect(() => {
     api.get('/projects').then((res) => setProjects(Array.isArray(res.data) ? res.data : []));
@@ -101,6 +109,7 @@ export const BookingFormPage: React.FC = () => {
         buildUpArea: plot?.sizeSqft || 0,
         dimensions: plot?.dimensions || '',
         bookingAmount: Number(form.bookingAmount) || 0,
+        secondaryAgentEmployeeId: form.secondaryAgentEmployeeId || null,
       });
       clear();
       clearDraft(DRAFT_KEY);
@@ -118,7 +127,7 @@ export const BookingFormPage: React.FC = () => {
     <PageFrame title="New booking" note="The plot details fill in after you choose the unit. The company confirms the booking after they see the deposit photo.">
       {restored && <DraftNotice onDiscard={() => { clear(); clearDraft(DRAFT_KEY); setForm(EMPTY); setRestored(false); }} />}
       <form onSubmit={submit} className="space-y-4">
-        <section className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-3">
+        <section className={`${panelClass} p-4 space-y-3`}>
           <h3 className="text-sm font-bold text-[#0B4F3C]">Unit</h3>
         <label className="block text-xs font-semibold">Project
           <select className={fieldClass} value={form.projectId} onChange={(e) => setForm((prev) => ({ ...prev, projectId: e.target.value, plotId: '' }))}>
@@ -148,14 +157,14 @@ export const BookingFormPage: React.FC = () => {
           <input className={fieldClass} readOnly value={plot?.dimensions || ''} />
         </label>
         </section>
-        <section className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-3">
+        <section className={`${panelClass} p-4 space-y-3`}>
           <h3 className="text-sm font-bold text-[#0B4F3C]">Payment</h3>
         <label className="block text-xs font-semibold">Booking amount
           <input className={fieldClass} inputMode="numeric" value={form.bookingAmount} onChange={(e) => set('bookingAmount', e.target.value)} />
         </label>
         <FileRow label="Amount deposit photo" url={form.depositPhotoUrl} onFile={(file) => onFile('depositPhotoUrl', file)} />
         </section>
-        <section className="bg-sky-50 border border-sky-300 rounded-2xl p-4 space-y-3">
+        <section className={`${panelClass} p-4 space-y-3`}>
           <h3 className="text-sm font-bold text-[#0B4F3C]">Customer</h3>
         <label className="block text-xs font-semibold">Booking date
           <input type="date" className={fieldClass} value={form.bookingDate} onChange={(e) => set('bookingDate', e.target.value)} />
@@ -182,7 +191,7 @@ export const BookingFormPage: React.FC = () => {
         <Text label="Education" value={form.education} onChange={(v) => set('education', v)} />
         <Text label="Occupation" value={form.occupation} onChange={(v) => set('occupation', v)} />
         </section>
-        <section className="bg-violet-50 border border-violet-300 rounded-2xl p-4 space-y-3">
+        <section className={`${panelClass} p-4 space-y-3`}>
           <h3 className="text-sm font-bold text-[#0B4F3C]">Identity and nominee</h3>
         <Text label="PAN number" value={form.panNumber} onChange={(v) => set('panNumber', v)} />
         <Text label="Aadhaar, passport, or voter ID" value={form.idNumber} onChange={(v) => set('idNumber', v)} />
@@ -197,6 +206,32 @@ export const BookingFormPage: React.FC = () => {
         <Text label="Relation" value={form.nomineeRelation} onChange={(v) => set('nomineeRelation', v)} />
         <Text label="Nominee PAN" value={form.nomineePan} onChange={(v) => set('nomineePan', v)} />
         <Text label="Nominee Aadhaar" value={form.nomineeAadhaar} onChange={(v) => set('nomineeAadhaar', v)} />
+        </section>
+        <section className={`${panelClass} p-4 space-y-3`}>
+          <h3 className="text-sm font-bold text-[#0B4F3C]">Selling executives</h3>
+          <p className="text-[11px] text-[#171A18]/60">
+            Main ID stays filled from your login. Search a secondary ID if another executive helped on this booking.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block text-xs font-semibold">Main ID
+              <input className={fieldClass} readOnly value={mainCode} />
+            </label>
+            <label className="block text-xs font-semibold">Main executive name
+              <input className={fieldClass} readOnly value={mainName} />
+            </label>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold mb-1">Secondary ID</label>
+            <SponsorSearchField
+              value={form.secondaryAgentEmployeeId}
+              onChange={(id) => set('secondaryAgentEmployeeId', id)}
+              allowEmpty
+              excludeId={mainId}
+              placeholder="Secondary member ID or name"
+              emptyHint="Optional. Main ID above does not clear when you search here."
+              missLabel="No matching executive."
+            />
+          </div>
         <label className="flex items-center gap-2 text-sm font-semibold pt-2">
           <input type="checkbox" checked={form.termsAccepted} onChange={(e) => set('termsAccepted', e.target.checked)} />
           I agree to the plot booking terms

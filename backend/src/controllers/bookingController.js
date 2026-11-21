@@ -15,7 +15,8 @@ const STAFF = ['ADMIN', 'DIRECTOR'];
 const POPULATE = [
   { path: 'projectId', select: 'name code location paymentQrUrl bankDetails' },
   { path: 'plotId', select: 'plotNo block status price totalCost sizeSqft superBuiltUpSqft dimensions plotType totalPlc registryStatus facing' },
-  { path: 'agentEmployeeId', select: 'employeeCode currentRank bankName bankAccountName bankAccountNumber bankIfsc yearlyTargetPlots yearlyTargetAmount', populate: { path: 'userId', select: 'fullName email phone' } }
+  { path: 'agentEmployeeId', select: 'employeeCode currentRank bankName bankAccountName bankAccountNumber bankIfsc yearlyTargetPlots yearlyTargetAmount', populate: { path: 'userId', select: 'fullName email phone' } },
+  { path: 'secondaryAgentEmployeeId', select: 'employeeCode currentRank', populate: { path: 'userId', select: 'fullName email phone' } }
 ];
 
 function isStaff(user) {
@@ -282,10 +283,24 @@ exports.createBooking = async (req, res, next) => {
     const existing = await Booking.findOne({ plotId: plot._id, status: { $in: LOCKING_STATUSES } });
     if (existing) return res.status(409).json({ message: 'This plot already has a booking.' });
 
+    let secondaryAgentEmployeeId = null;
+    const secondaryRaw = body.secondaryAgentEmployeeId;
+    if (secondaryRaw) {
+      if (String(secondaryRaw) === String(me._id)) {
+        return res.status(400).json({ message: 'Secondary executive must be different from the main agent.' });
+      }
+      const secondary = await Employee.findById(secondaryRaw).select('_id');
+      if (!secondary) {
+        return res.status(400).json({ message: 'Secondary executive was not found.' });
+      }
+      secondaryAgentEmployeeId = secondary._id;
+    }
+
     const booking = await Booking.create({
       projectId: body.projectId,
       plotId: plot._id,
       agentEmployeeId: me._id,
+      secondaryAgentEmployeeId,
       floorNo: body.floorNo || '',
       plotType: body.plotType || plot.plotType || '',
       superBuiltUpSqft: Number(body.superBuiltUpSqft) || plot.superBuiltUpSqft || 0,

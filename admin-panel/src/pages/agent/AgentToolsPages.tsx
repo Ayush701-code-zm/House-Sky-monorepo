@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ChangePasswordModal } from '../../components/common/ChangePasswordModal';
-import { fieldClass, PageFrame, personName, rupee, uploadImage } from './agentUi';
+import { fieldClass, PageFrame, panelClass, panelItemClass, personName, rupee, uploadImage } from './agentUi';
 
 function useEmployees() {
   const [rows, setRows] = useState<any[]>([]);
@@ -39,7 +39,7 @@ export const TeamSalesPage: React.FC<{ title?: string }> = ({ title = 'Plots sol
 
   return (
     <PageFrame title={title}>
-      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 space-y-3">
+      <div className={`${panelClass} p-4 space-y-3`}>
         <select className={fieldClass} value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
           <option value="">Select executive</option>
           {people.map((person) => <option key={person.id || person._id} value={person.id || person._id}>{personName(person)} · {person.employeeCode}</option>)}
@@ -75,7 +75,7 @@ export const YearlyPlanPage: React.FC = () => {
   useEffect(() => { api.get('/agent/yearly-plan').then((res) => setPlan(res.data)); }, []);
   return (
     <PageFrame title="Yearly plan">
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-2">
+      <div className={`${panelClass} p-5 space-y-2`}>
         <p>Year {plan?.year}</p>
         <p className="font-bold">Target plots: {plan?.targetPlots ?? 0}</p>
         <p className="font-bold">Bookings this year: {plan?.achievedPlots ?? 0}</p>
@@ -99,7 +99,7 @@ export const MyCommissionPage: React.FC = () => {
       <p className="font-bold">Your entries: {rupee(total)}</p>
       <ul className="space-y-2">
         {rows.map((row) => (
-          <li key={row._id} className="bg-sky-50 border border-sky-200 rounded-xl p-3 text-sm">
+          <li key={row._id} className={`${panelItemClass} p-3 text-sm`}>
             {rupee(row.commissionAmount)} · {row.status} · plot {row.plotId?.plotNo || '—'}
           </li>
         ))}
@@ -116,7 +116,7 @@ export const MembersPage: React.FC = () => {
     <PageFrame title="My members">
       <ul className="space-y-2">
         {people.map((person) => (
-          <li key={person.id || person._id} className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+          <li key={person.id || person._id} className={`${panelItemClass} p-3`}>
             <p className="font-bold">{personName(person)}</p>
             <p className="text-sm">{person.employeeCode} · {person.currentRank}</p>
           </li>
@@ -149,7 +149,7 @@ export const EstimatePage: React.FC = () => {
         {plots.map((item) => <option key={item._id} value={item._id}>{item.plotNo}</option>)}
       </select>
       {plot && (
-        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 space-y-1 text-sm">
+        <div className={`${panelClass} p-4 space-y-1 text-sm`}>
           <p>Type: {plot.plotType || '—'}</p>
           <p>Area: {plot.sizeSqft || 0} sq ft</p>
           <p>Super built-up: {plot.superBuiltUpSqft || 0} sq ft</p>
@@ -169,7 +169,7 @@ export const ReceiptPage: React.FC = () => {
       <ul className="space-y-2">
         {rows.map((row) => (
           <li key={row._id}>
-            <button type="button" className="w-full text-left bg-teal-50 border border-teal-200 rounded-xl p-3" onClick={() => setCurrent(row)}>
+            <button type="button" className={`w-full text-left ${panelItemClass} p-3`} onClick={() => setCurrent(row)}>
               <span className="font-bold">{row.customerName}</span>
               <span className="text-sm"> · plot {row.plotId?.plotNo || '—'} · {row.status}</span>
             </button>
@@ -184,7 +184,10 @@ export const ReceiptPage: React.FC = () => {
           <p>Plot: {current.plotId?.plotNo}</p>
           <p>Amount: {rupee(current.bookingAmount)}</p>
           <p>Status: {current.status}</p>
-          <p>Agent: {personName(current.agentEmployeeId)} · {current.agentEmployeeId?.employeeCode}</p>
+          <p>Main agent: {personName(current.agentEmployeeId)} · {current.agentEmployeeId?.employeeCode}</p>
+          {current.secondaryAgentEmployeeId && (
+            <p>Secondary agent: {personName(current.secondaryAgentEmployeeId)} · {current.secondaryAgentEmployeeId?.employeeCode}</p>
+          )}
           <button type="button" className="mt-3 px-4 py-2 rounded-xl bg-[#0B4F3C] text-white font-bold print:hidden" onClick={() => window.print()}>Print / save</button>
         </article>
       )}
@@ -213,7 +216,7 @@ export const CancelPlotPage: React.FC = () => {
       {note && <p className="text-sm text-[#0B4F3C]">{note}</p>}
       <ul className="space-y-2">
         {open.map((row) => (
-          <li key={row._id} className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center justify-between gap-3">
+          <li key={row._id} className={`${panelItemClass} p-3 flex items-center justify-between gap-3`}>
             <span className="text-sm">{row.customerName} · plot {row.plotId?.plotNo} · {row.status}</span>
             {row.status !== 'CANCEL_REQUESTED' && (
               <button type="button" className="text-xs font-bold text-red-700" onClick={() => cancel(row._id)}>Cancel</button>
@@ -240,7 +243,7 @@ export const CustomerDocsPage: React.FC = () => {
   };
   return (
     <PageFrame title="Upload customer document">
-      <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 space-y-3">
+      <div className={`${panelClass} p-4 space-y-3`}>
       <select className={fieldClass} value={bookingId} onChange={(e) => setBookingId(e.target.value)}>
         <option value="">Select booking</option>
         {rows.map((row) => <option key={row._id} value={row._id}>{row.customerName} · {row.plotId?.plotNo}</option>)}
@@ -269,7 +272,7 @@ export const SearchExecutivePage: React.FC = () => {
       </form>
       <ul className="space-y-2">
         {rows.map((person) => (
-          <li key={person.id || person._id} className="bg-cyan-50 border border-cyan-200 rounded-xl p-3">
+          <li key={person.id || person._id} className={`${panelItemClass} p-3`}>
             {personName(person)} · {person.employeeCode} · {person.currentRank}
           </li>
         ))}
@@ -290,7 +293,7 @@ export const ProfilePage: React.FC = () => {
   if (!home) return <PageFrame title="My profile"><p>Loading…</p></PageFrame>;
   return (
     <PageFrame title="My profile">
-      <form onSubmit={save} className="space-y-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+      <form onSubmit={save} className={`space-y-3 ${panelClass} p-4`}>
         <p className="font-bold">{home.employeeCode} · {home.currentRank}</p>
         <input className={fieldClass} value={home.fullName} onChange={(e) => setHome({ ...home, fullName: e.target.value })} />
         <input className={fieldClass} value={home.phone} onChange={(e) => setHome({ ...home, phone: e.target.value })} />
@@ -314,7 +317,7 @@ export const BankPage: React.FC = () => {
   if (!bank) return <PageFrame title="My bank info"><p>Loading…</p></PageFrame>;
   return (
     <PageFrame title="My bank info">
-      <form onSubmit={save} className="space-y-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+      <form onSubmit={save} className={`space-y-3 ${panelClass} p-4`}>
         <input className={fieldClass} placeholder="Bank name" value={bank.bankName || ''} onChange={(e) => setBank({ ...bank, bankName: e.target.value })} />
         <input className={fieldClass} placeholder="Account name" value={bank.bankAccountName || ''} onChange={(e) => setBank({ ...bank, bankAccountName: e.target.value })} />
         <input className={fieldClass} placeholder="Account number" value={bank.bankAccountNumber || ''} onChange={(e) => setBank({ ...bank, bankAccountNumber: e.target.value })} />
@@ -347,7 +350,7 @@ export const PasswordPage: React.FC = () => {
   const [open, setOpen] = useState(true);
   return (
     <PageFrame title="Reset password">
-      <div className="bg-stone-100 border border-stone-300 rounded-2xl p-4 space-y-3">
+      <div className={`${panelClass} p-4 space-y-3`}>
       <p className="text-sm">Choose a new password for this agent login. The old one stops working on other devices.</p>
       <button type="button" className="px-4 py-2 rounded-xl bg-[#0B4F3C] text-white font-bold" onClick={() => setOpen(true)}>Change password</button>
       {open && <ChangePasswordModal onClose={() => setOpen(false)} />}
