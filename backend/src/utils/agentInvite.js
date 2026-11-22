@@ -177,32 +177,27 @@ async function findUserByPhone(phone) {
   return User.findOne(filter).select('_id');
 }
 
-const MAX_AGENT_IDS_PER_CONTACT = 3;
+const MAX_AGENT_IDS_PER_CONTACT = 5;
 
 /**
- * One email together with one mobile may belong to three AGENT member IDs.
- * A fourth ID, a different pairing, or a staff login on that contact is refused.
+ * One email may appear on up to five AGENT member IDs, and one mobile may
+ * appear on up to five AGENT member IDs. Email and mobile do not have to match
+ * as a pair. A staff login on either contact still blocks a new agent ID.
  * Returns an error message, or null when another agent ID is allowed.
  */
 async function agentContactSlot(email, phone) {
   const normalizedEmail = String(email || '').toLowerCase().trim();
-  const digits = phoneDigits(phone);
   const byEmail = normalizedEmail ? await User.find({ email: normalizedEmail }) : [];
   const phoneQuery = phoneFilter(phone);
   const byPhone = phoneQuery ? await User.find(phoneQuery) : [];
-  const seen = new Map();
-  [...byEmail, ...byPhone].forEach((user) => seen.set(String(user._id), user));
-  const users = [...seen.values()];
-  if (!users.length) return null;
-  if (users.some((user) => user.role !== 'AGENT')) {
+  if ([...byEmail, ...byPhone].some((user) => user.role !== 'AGENT')) {
     return 'This email or mobile already belongs to a staff login.';
   }
-  const samePair = users.every((user) => user.email === normalizedEmail && phoneDigits(user.phone) === digits);
-  if (!samePair) {
-    return 'This email and mobile are already used on different member IDs.';
+  if (byEmail.length >= MAX_AGENT_IDS_PER_CONTACT) {
+    return `This email already has ${MAX_AGENT_IDS_PER_CONTACT} member IDs.`;
   }
-  if (users.length >= MAX_AGENT_IDS_PER_CONTACT) {
-    return 'This email and mobile already have 3 member IDs.';
+  if (byPhone.length >= MAX_AGENT_IDS_PER_CONTACT) {
+    return `This mobile already has ${MAX_AGENT_IDS_PER_CONTACT} member IDs.`;
   }
   return null;
 }
