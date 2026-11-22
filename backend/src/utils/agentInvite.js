@@ -190,14 +190,19 @@ async function agentContactSlot(email, phone) {
   const byEmail = normalizedEmail ? await User.find({ email: normalizedEmail }) : [];
   const phoneQuery = phoneFilter(phone);
   const byPhone = phoneQuery ? await User.find(phoneQuery) : [];
-  if ([...byEmail, ...byPhone].some((user) => user.role !== 'AGENT')) {
-    return 'This email or mobile already belongs to a staff login.';
+  const staffOnEmail = byEmail.find((user) => user.role !== 'AGENT');
+  if (staffOnEmail) {
+    return `Email ${normalizedEmail} already belongs to a staff login (${staffOnEmail.role}). Use a different email.`;
+  }
+  const staffOnPhone = byPhone.find((user) => user.role !== 'AGENT');
+  if (staffOnPhone) {
+    return 'This mobile number already belongs to a staff login. Use a different mobile.';
   }
   if (byEmail.length >= MAX_AGENT_IDS_PER_CONTACT) {
-    return `This email already has ${MAX_AGENT_IDS_PER_CONTACT} member IDs.`;
+    return `Email ${normalizedEmail} already has ${byEmail.length} member IDs. Limit is ${MAX_AGENT_IDS_PER_CONTACT} per email.`;
   }
   if (byPhone.length >= MAX_AGENT_IDS_PER_CONTACT) {
-    return `This mobile already has ${MAX_AGENT_IDS_PER_CONTACT} member IDs.`;
+    return `This mobile number already has ${byPhone.length} member IDs. Limit is ${MAX_AGENT_IDS_PER_CONTACT} per mobile.`;
   }
   return null;
 }

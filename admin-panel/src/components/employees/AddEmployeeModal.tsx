@@ -98,8 +98,9 @@ const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSucc
         {draftRestored && onDiscardDraft && <DraftNotice onDiscard={onDiscardDraft} />}
 
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold">
-            {errorMsg}
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 space-y-1">
+            <p className="text-[11px] font-bold uppercase tracking-wide">Could not create this agent</p>
+            <p className="text-xs font-semibold leading-relaxed">{errorMsg}</p>
           </div>
         )}
 
@@ -142,7 +143,7 @@ const AddEmployeeModalBody: React.FC<AddEmployeeModalProps> = ({ onClose, onSucc
           </div>
           {role === 'AGENT' && (
             <p className="text-xs font-semibold text-[#0B4F3C] bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-              One email or one mobile can each be used on up to 5 member IDs. They do not have to match as a pair. Sign in with the member ID when contacts are shared.
+              Rule: 1 email can make up to 5 IDs, and 1 mobile can make up to 5 IDs. Email and mobile can be different. If several IDs share a contact, sign in with the member ID.
             </p>
           )}
 
