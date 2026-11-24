@@ -84,7 +84,7 @@ export function HouseAndSkyChatbot() {
     const query = (textToSend || input).trim().slice(0, 500)
     if (!query || isLoading) return
 
-    // Client-side cooldown — real enforcement is on /api/chat.
+    // Client-side cooldown — real enforcement is on /api/v1/public/chat.
     const now = Date.now()
     if (now - lastSendAt.current < 1200) return
     lastSendAt.current = now
@@ -101,7 +101,7 @@ export function HouseAndSkyChatbot() {
     setIsLoading(true)
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${getApiBaseUrl()}/public/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: query }),
@@ -114,6 +114,7 @@ export function HouseAndSkyChatbot() {
         sender: 'bot',
         text:
           data.reply ||
+          data.message ||
           (res.status === 429
             ? 'You have reached the chat limit for now. Please try again shortly.'
             : 'Thank you for reaching out. Our real estate advisory desk is at your service.'),

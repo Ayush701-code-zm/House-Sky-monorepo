@@ -15,6 +15,7 @@ const notificationController = require('../controllers/notificationController');
 const reportController = require('../controllers/reportController');
 
 const inquiryController = require('../controllers/inquiryController');
+const chatbotController = require('../controllers/chatbotController');
 const bulkBuyController = require('../controllers/bulkBuyController');
 const bulkDealController = require('../controllers/bulkDealController');
 const BulkBuyInquiry = require('../models/BulkBuyInquiry');
@@ -39,6 +40,11 @@ const PROPERTY_STATUSES = ['AVAILABLE', 'BOOKED', 'SOLD', 'UPCOMING'];
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many attempts, please try again later.' });
 const inquiryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many inquiries submitted. Please wait a few minutes before trying again.' });
+const chatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: 'You have reached the chat limit for now. Please try again in a few minutes, or call +91 93112 27789.',
+});
 const sponsorLookupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, message: 'Too many sponsor lookups. Please wait a few minutes and try again.' });
 const propertySubmitLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 'Too many property submissions. Please wait before submitting again.' });
 const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many uploads. Please wait a few minutes before trying again.' });
@@ -114,6 +120,9 @@ router.post('/public/inquiries', inquiryLimiter, validate({
   email: { required: true, type: 'email' },
   phone: { required: true, type: 'string', minLength: 5, maxLength: 20 }
 }), inquiryController.createPublicInquiry);
+router.post('/public/chat', chatLimiter, validate({
+  message: { required: true, type: 'string', minLength: 1, maxLength: 500 }
+}), chatbotController.publicChat);
 router.post('/public/chatbot-lead', inquiryLimiter, validate({
   phone: { required: true, type: 'string', minLength: 5, maxLength: 20 }
 }), inquiryController.createChatbotLead);
